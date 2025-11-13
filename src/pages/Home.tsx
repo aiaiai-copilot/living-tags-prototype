@@ -1,21 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/search/SearchBar'
 import { TextList } from '@/components/texts/TextList'
 import { AddTextModal } from '@/components/texts/AddTextModal'
+import { OnboardingModal } from '@/components/auth/OnboardingModal'
 import { useTexts } from '@/hooks/useTexts'
 import { useAddText } from '@/hooks/useAddText'
 import { useAuth } from '@/hooks/useAuth'
+import { useInitializeDefaultTags } from '@/hooks/useInitializeDefaultTags'
+
+const ONBOARDING_SEEN_KEY = 'living-tags-onboarding-seen'
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const navigate = useNavigate()
 
   const { data: texts, isLoading } = useTexts(searchQuery)
   const addText = useAddText()
   const { signOut, user } = useAuth()
+  const { initializeTags } = useInitializeDefaultTags()
 
   const handleAddText = async (content: string) => {
     try {
@@ -39,6 +45,29 @@ export default function Home() {
       console.error('Failed to sign out:', error)
     }
   }
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false)
+    localStorage.setItem(ONBOARDING_SEEN_KEY, 'true')
+  }
+
+  // Initialize default tags for new users and show onboarding
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem(ONBOARDING_SEEN_KEY)
+
+    if (!hasSeenOnboarding && user) {
+      // Initialize tags in background
+      initializeTags().then(() => {
+        // Show onboarding modal whether tags were just created or not
+        // (they might have been created in a previous session before onboarding was shown)
+        setShowOnboarding(true)
+      }).catch((error) => {
+        console.error('Failed to initialize tags:', error)
+        // Still show onboarding even if tag initialization failed
+        setShowOnboarding(true)
+      })
+    }
+  }, [user, initializeTags])
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,6 +108,12 @@ export default function Home() {
           open={modalOpen}
           onOpenChange={setModalOpen}
           onSubmit={handleAddText}
+        />
+
+        {/* Onboarding Modal */}
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={handleCloseOnboarding}
         />
       </div>
     </div>

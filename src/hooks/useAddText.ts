@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { useAutoTag } from '@/hooks/useAutoTag';
 import type { Text } from '@/types';
 
@@ -21,14 +22,20 @@ import type { Text } from '@/types';
  */
 export function useAddText() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const autoTag = useAutoTag();
 
   return useMutation<Text, Error, string>({
     mutationFn: async (content: string) => {
-      // Step 1: Insert text into database
+      // Validate user is authenticated
+      if (!user) {
+        throw new Error('You must be logged in to add text');
+      }
+
+      // Step 1: Insert text into database with user_id
       const { data, error } = await supabase
         .from('texts')
-        .insert([{ content }])
+        .insert([{ content, user_id: user.id }])
         .select()
         .single();
 

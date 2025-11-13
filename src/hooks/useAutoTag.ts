@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { analyzeTextForTags, type TagAnalysisResult } from '@/lib/claude';
 import type { Tag } from '@/types';
 
@@ -15,7 +16,7 @@ interface AutoTagParams {
  * Hook for automatically tagging a text using Claude API
  *
  * This hook orchestrates the entire auto-tagging process:
- * 1. Fetches all available tags from the database
+ * 1. Fetches all available tags from the database for the current user
  * 2. Calls Claude API to analyze the text
  * 3. Saves the tag assignments to the text_tags table
  *
@@ -33,13 +34,20 @@ interface AutoTagParams {
  */
 export function useAutoTag() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation<TagAnalysisResult[], Error, AutoTagParams>({
     mutationFn: async ({ textId, content }: AutoTagParams) => {
-      // Step 1: Fetch all available tags from database
+      // Validate user is authenticated
+      if (!user) {
+        throw new Error('You must be logged in to use auto-tagging');
+      }
+
+      // Step 1: Fetch all available tags from database for the current user
       const { data: tags, error: fetchError } = await supabase
         .from('tags')
         .select('id, name')
+        .eq('user_id', user.id)
         .returns<Tag[]>();
 
       if (fetchError) {

@@ -1,16 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import type { TextWithTags } from '@/types';
 
 /**
- * Hook for fetching texts with their associated tags and confidence scores
+ * Hook for fetching texts with their associated tags and confidence scores for the current user
  * @param searchQuery - Optional search query to filter texts by tag name
  * @returns Query result with texts array, loading state, and error
  */
 export function useTexts(searchQuery?: string) {
+  const { user } = useAuth();
+
   return useQuery<TextWithTags[], Error>({
-    queryKey: ['texts', searchQuery],
+    queryKey: ['texts', user?.id, searchQuery],
     queryFn: async () => {
+      // Return empty array if user is not authenticated
+      if (!user) {
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('texts')
         .select(`
@@ -27,6 +35,7 @@ export function useTexts(searchQuery?: string) {
             )
           )
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -70,5 +79,6 @@ export function useTexts(searchQuery?: string) {
 
       return transformedData;
     },
+    enabled: !!user, // Only run query when user is authenticated
   });
 }

@@ -2,6 +2,28 @@
  * Database types for Living Tags PoC
  */
 
+/**
+ * User type from Supabase Auth
+ */
+export interface User {
+  id: string;
+  email?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Auth session information
+ */
+export interface Session {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  expires_at?: number;
+  token_type: string;
+  user: User;
+}
+
 export interface Tag {
   id: string;
   name: string;

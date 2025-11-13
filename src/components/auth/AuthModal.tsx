@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ interface AuthModalProps {
 
 export function AuthModal({ isOpen, onClose, defaultView = "signin" }: AuthModalProps) {
   const [currentView, setCurrentView] = useState<"signin" | "signup">(defaultView);
+  const navigate = useNavigate();
 
   // Reset view when defaultView changes
   useEffect(() => {
@@ -26,6 +28,8 @@ export function AuthModal({ isOpen, onClose, defaultView = "signin" }: AuthModal
 
   const handleSuccess = () => {
     onClose();
+    // Navigate to the protected app after successful authentication
+    navigate("/app");
   };
 
   const toggleView = () => {

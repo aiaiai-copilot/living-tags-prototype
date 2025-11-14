@@ -87,6 +87,7 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
       handleSaveEdit(tagId);
     } else if (e.key === "Escape") {
       e.preventDefault();
+      e.stopPropagation(); // Prevent Sheet from closing
       handleCancelEdit();
     }
   };

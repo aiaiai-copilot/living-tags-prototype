@@ -5,10 +5,12 @@ import { SearchBar } from '@/components/search/SearchBar'
 import { TextList } from '@/components/texts/TextList'
 import { AddTextModal } from '@/components/texts/AddTextModal'
 import { OnboardingModal } from '@/components/auth/OnboardingModal'
+import { TagManager } from '@/components/tags/TagManager'
 import { useTexts } from '@/hooks/useTexts'
 import { useAddText } from '@/hooks/useAddText'
 import { useAuth } from '@/hooks/useAuth'
 import { useInitializeDefaultTags } from '@/hooks/useInitializeDefaultTags'
+import { Tags } from 'lucide-react'
 
 const ONBOARDING_SEEN_KEY = 'living-tags-onboarding-seen'
 
@@ -16,6 +18,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [tagManagerOpen, setTagManagerOpen] = useState(false)
   const navigate = useNavigate()
 
   const { data: texts, isLoading } = useTexts(searchQuery)
@@ -92,9 +95,15 @@ export default function Home() {
 
         {/* Actions Row */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <Button onClick={() => setModalOpen(true)} className="sm:w-auto">
-            + Add Text
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setTagManagerOpen(true)} variant="outline" className="sm:w-auto">
+              <Tags className="h-4 w-4 mr-2" />
+              Tags
+            </Button>
+            <Button onClick={() => setModalOpen(true)} className="sm:w-auto">
+              + Add Text
+            </Button>
+          </div>
           <div className="flex-1">
             <SearchBar value={searchQuery} onChange={handleSearch} />
           </div>
@@ -114,6 +123,12 @@ export default function Home() {
         <OnboardingModal
           isOpen={showOnboarding}
           onClose={handleCloseOnboarding}
+        />
+
+        {/* Tag Manager Panel */}
+        <TagManager
+          open={tagManagerOpen}
+          onOpenChange={setTagManagerOpen}
         />
       </div>
     </div>

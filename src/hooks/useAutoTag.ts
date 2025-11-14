@@ -89,6 +89,7 @@ export function useAutoTag() {
         text_id: textId,
         tag_id: tag.id,
         confidence: tag.confidence,
+        source: 'ai' as const,
       }));
 
       const { error: insertError } = await supabase

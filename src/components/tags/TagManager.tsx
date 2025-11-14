@@ -226,7 +226,7 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onSubmit={async (name: string) => {
-          await createTag.mutateAsync({ name });
+          return await createTag.mutateAsync({ name });
         }}
       />
 

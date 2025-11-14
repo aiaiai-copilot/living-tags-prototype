@@ -104,8 +104,18 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
     await deleteTag.mutateAsync({ id: tagToDelete.id });
   };
 
+  // Handler for Sheet open/close - prevent closing when editing
+  const handleOpenChange = (newOpen: boolean) => {
+    // If trying to close while editing, just cancel the edit instead
+    if (!newOpen && editingTagId !== null) {
+      handleCancelEdit();
+      return;
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="left" className="w-80 sm:w-96">
         <SheetHeader>
           <div className="flex items-center justify-between">

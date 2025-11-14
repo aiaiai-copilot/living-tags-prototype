@@ -123,7 +123,7 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
           </div>
         </SheetHeader>
 
-        <div className="mt-6 space-y-2">
+        <div className="mt-6 space-y-2 overflow-y-auto max-h-[calc(100vh-120px)] pr-2">
           {isLoading ? (
             <div className="text-sm text-muted-foreground">
               Loading tags...

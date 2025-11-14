@@ -145,6 +145,10 @@ export function useBatchAutoTag() {
       // Step 3: Process each text sequentially
       for (let i = 0; i < texts.length; i++) {
         const text = texts[i];
+
+        // Skip if text is undefined (should never happen, but satisfies TypeScript)
+        if (!text) continue;
+
         const currentProgress: BatchAutoTagProgress = {
           current: i + 1,
           total: texts.length,

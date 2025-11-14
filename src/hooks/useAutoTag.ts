@@ -18,7 +18,11 @@ interface AutoTagParams {
  * This hook orchestrates the entire auto-tagging process:
  * 1. Fetches all available tags from the database for the current user
  * 2. Calls Claude API to analyze the text
- * 3. Saves the tag assignments to the text_tags table
+ * 3. Deletes only AI-generated tags (preserves manual tags)
+ * 4. Saves new AI tag assignments to the text_tags table
+ *
+ * IMPORTANT: Manual tags (source='manual') are preserved during re-tagging.
+ * Only AI tags (source='ai') are replaced with new AI analysis.
  *
  * @returns Mutation result with mutateAsync function, loading state, and error
  *
@@ -74,14 +78,15 @@ export function useAutoTag() {
         return [];
       }
 
-      // Step 3: Delete existing tags for this text (if re-tagging)
+      // Step 3: Delete only AI tags for this text (preserve manual tags)
       const { error: deleteError } = await supabase
         .from('text_tags')
         .delete()
-        .eq('text_id', textId);
+        .eq('text_id', textId)
+        .eq('source', 'ai');
 
       if (deleteError) {
-        console.warn('Failed to delete old tags:', deleteError.message);
+        console.warn('Failed to delete old AI tags:', deleteError.message);
       }
 
       // Step 4: Insert new tag assignments into text_tags table

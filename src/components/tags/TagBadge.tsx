@@ -1,36 +1,60 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { X, Check } from "lucide-react";
+import { useState } from "react";
 
 interface TagBadgeProps {
   name: string;
   confidence: number; // 0.0 to 1.0
+  source: 'ai' | 'manual';
+  onRemove?: () => void;
 }
 
-export function TagBadge({ name, confidence }: TagBadgeProps) {
+export function TagBadge({ name, confidence, source, onRemove }: TagBadgeProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   // Convert confidence to percentage for display
   const confidencePercent = Math.round(confidence * 100);
 
-  // Determine background and text color classes based on confidence ranges
-  // Using Tailwind classes for discrete confidence levels
-  const getConfidenceClasses = () => {
-    if (confidence >= 0.9) {
-      return "bg-gray-900 text-white border-gray-900";
-    } else if (confidence >= 0.75) {
-      return "bg-gray-700 text-white border-gray-700";
-    } else if (confidence >= 0.6) {
-      return "bg-gray-600 text-white border-gray-600";
-    } else if (confidence >= 0.4) {
-      return "bg-gray-400 text-gray-900 border-gray-400";
-    } else if (confidence >= 0.25) {
-      return "bg-gray-300 text-gray-900 border-gray-300";
+  // Manual tags: solid background with checkmark, no percentage
+  // AI tags: light gray background with confidence percentage
+  const getBadgeClasses = () => {
+    if (source === 'manual') {
+      // Manual tags: solid primary color, more prominent
+      return "bg-primary text-primary-foreground border-primary";
     } else {
-      return "bg-gray-200 text-gray-900 border-gray-200";
+      // AI tags: light gray, muted appearance (outlined style)
+      return "bg-secondary text-secondary-foreground border-secondary";
     }
   };
 
   return (
-    <Badge className={cn("border", getConfidenceClasses())}>
-      {name} ({confidencePercent}%)
-    </Badge>
+    <div
+      className="relative inline-flex group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Badge className={cn("border", getBadgeClasses())}>
+        {name} {source === 'manual' ? (
+          <Check className="ml-1 h-3 w-3 inline" />
+        ) : (
+          `${confidencePercent}%`
+        )}
+      </Badge>
+      {onRemove && isHovered && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute -right-2 -top-2 h-5 w-5 p-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
   );
 }

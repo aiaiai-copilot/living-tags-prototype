@@ -28,6 +28,7 @@ export function useTexts(searchQuery?: string) {
           updated_at,
           text_tags (
             confidence,
+            source,
             tags (
               id,
               name,
@@ -62,6 +63,7 @@ export function useTexts(searchQuery?: string) {
               name: tag.name,
               created_at: tag.created_at,
               confidence: tt.confidence,
+              source: tt.source,
             };
           })
           .filter((tag): tag is NonNullable<typeof tag> => tag !== null),

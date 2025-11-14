@@ -1,348 +1,538 @@
-# Session Handoff: Living Tags Prototype
+# Session Handoff: Living Tags Prototype - Phase 2 Complete
 
 **Date:** 2025-11-14
-**Session:** Phase 1 Implementation & Testing
-**Status:** ✅ Phase 1 Complete, Ready for Phase 2
-**Branch:** `claude/living-tags-prototype-01Hdox2pffT4uxxwws1e96r1`
+**Session:** Phase 2 Implementation & Testing
+**Status:** ✅ Phase 2 Complete, Ready for Phase 3
+**Branch:** `claude/li-phase-2-01MgitFbTxcNj3uX2aVmhmUG`
 
 ---
 
 ## What Was Completed
 
-### ✅ Phase 1: Multi-User Authentication & Data Isolation
+### ✅ Phase 2.1: Tag Glossary CRUD Management
 
 **All features implemented and tested:**
 
-1. **Database Schema** (`supabase/migrations/20251113000000_prototype_schema.sql`)
-   - Multi-tenant schema with `user_id` on all tables
-   - 3 tables: `tags`, `texts`, `text_tags`
-   - `text_tags.source` column for AI/manual tracking ('ai' | 'manual')
-   - 12 RLS policies (4 per table) for complete data isolation
-   - Automatic timestamp triggers
-   - Performance indexes
+1. **Tag Manager Panel** (`src/components/tags/TagManager.tsx`)
+   - Collapsible panel on left side
+   - Toggles with "Tags" button in main UI
+   - Scrollable list (displays all tags even when > viewport height)
+   - Shows tag count in header: "Tag Glossary (15)"
+   - Clean, responsive UI with shadcn/ui Sheet component
 
-2. **Authentication System**
-   - `useAuth` hook with sign up/in/out
-   - Supabase Auth integration (email/password)
-   - Session management and state tracking
-   - Real-time auth state changes
+2. **Create Tag** (`src/components/tags/AddTagDialog.tsx`)
+   - Modal dialog with form validation
+   - Validation rules:
+     - Required field (1-50 characters)
+     - Trim whitespace automatically
+     - No duplicate names per user (database unique constraint)
+   - Error handling with user-friendly messages
+   - Uses react-hook-form + Zod for validation
 
-3. **UI Components**
-   - Landing page with hero and feature cards
-   - Auth modal (toggle sign in/sign up)
-   - SignInForm & SignUpForm with validation
-   - ProtectedRoute component
-   - OnboardingModal for new users
+3. **Update/Rename Tag** (Inline editing in TagManager.tsx)
+   - Click [✏️] pencil icon → inline edit mode
+   - Input field with current tag name
+   - [✓] save and [✕] cancel buttons
+   - Keyboard shortcuts:
+     - **Enter** → Save changes
+     - **Escape** → Cancel edit (panel stays open)
+   - Optimistic updates for instant UI feedback
+   - Validation: same as Create (1-50 chars, no duplicates)
+   - All text_tags relationships preserved (no re-tagging needed)
 
-4. **Routing**
-   - React Router v6 setup
-   - Public route: `/` (Landing)
-   - Protected route: `/app` (Main app)
-   - Navigation after auth
-   - Sign-out with redirect
+4. **Delete Tag** (`src/components/tags/DeleteTagDialog.tsx`)
+   - Confirmation dialog before deletion
+   - Shows tag name and usage count: "Remove tag from N texts"
+   - Database CASCADE automatically deletes related text_tags
+   - Optimistic UI updates (tag disappears immediately)
+   - Cancel and Delete buttons (destructive variant)
 
-5. **Multi-Tenant Data Layer**
-   - All hooks filter by `user_id`
-   - `useTags`, `useTexts`, `useAddText`, `useAutoTag` updated
-   - React Query cache keys include user_id
-   - Proper auth state handling
+5. **Real Usage Counts** (`src/hooks/useTagUsageCounts.ts`)
+   - Efficient bulk query for all tag usage counts
+   - Format: "Tag Name (45)" where 45 = number of texts
+   - Auto-updates when tags/texts/assignments change
+   - Query invalidation on text creation, auto-tagging, tag deletion
 
-6. **Onboarding**
-   - `useInitializeDefaultTags` hook
-   - 15 default Russian tags per new user
-   - localStorage tracking to prevent re-showing
-   - Welcome modal on first login
+### ✅ Phase 2.2: Auto-Tag Existing Texts
+
+**All features implemented and tested:**
+
+1. **Checkbox in Add Tag Dialog**
+   - "Automatically tag existing texts" option
+   - Shows text count: "(This will analyze all N texts)"
+   - Uses existing text query to get count
+
+2. **Batch Auto-Tagging** (`src/hooks/useBatchAutoTag.ts`)
+   - Sequential processing (avoids API rate limits)
+   - For each text:
+     - Calls Claude API with new tag in available list
+     - If confidence > 0.3, inserts text_tag relationship
+     - Tracks success/error counts
+   - Reuses existing Claude API integration from Phase 1
+   - Continues processing even if some texts fail
+
+3. **Progress UI** (in AddTagDialog.tsx)
+   - Real-time status messages:
+     - "Creating tag..."
+     - "Starting auto-tagging..."
+     - "Analyzing text X of Y..."
+   - Visual progress bar showing percentage completion
+   - Disabled close/cancel buttons during processing
+   - Completion summary: "Successfully tagged X of Y texts"
+   - Shows error count if failures: "Z failed"
+   - Auto-closes after 2-second delay
+
+4. **Error Handling**
+   - Graceful partial success (some texts fail, others succeed)
+   - Duplicate tag assignment handling (ignores error code 23505)
+   - Failed texts logged to console with error details
+   - User-friendly error summaries
 
 ---
 
 ## Current Project Status
 
-### ✅ Working Features
+### ✅ Working Features (Phase 1 + Phase 2)
+
+**Phase 1 (from previous session):**
 - Sign up / Sign in / Sign out
 - Email confirmation (Supabase Auth)
 - Protected routes with auth guards
 - Onboarding modal on first login
-- 15 default tags auto-created per user
+- 15 default Russian tags auto-created per user
 - Add text functionality
 - AI auto-tagging with Claude API
-- **Multi-tenant data isolation verified**
+- Multi-tenant data isolation (RLS policies)
 - Search by tags
 
+**Phase 2.1 (Tag CRUD):**
+- Collapsible Tag Manager panel (left side, scrollable)
+- Create tag with validation and duplicate detection
+- Inline rename tag with optimistic updates
+- Delete tag with confirmation and CASCADE
+- Real-time usage count display
+
+**Phase 2.2 (Auto-Tag):**
+- Batch auto-tag existing texts when creating new tag
+- Progress UI with status and progress bar
+- Partial success handling
+- Completion summary with success/error counts
+
 ### 📊 Build Info
+
 - **Build Status:** ✅ Successful
-- **Bundle Size:** 582.70 kB
-- **TypeScript:** Strict mode, no errors
+- **TypeScript:** Strict mode, no errors, no `any` types
 - **Dev Server:** Runs on http://localhost:3000
+- **Bundle:** Compiles successfully with Vite
 
 ### 🗄️ Database Status
+
 - **Migration Applied:** ✅ 20251113000000_prototype_schema.sql
-- **Tables Created:** tags, texts, text_tags
-- **RLS Enabled:** ✅ All tables
-- **Test Data:** 2 users with texts and tags
+- **Tables:** tags, texts, text_tags (all with RLS policies)
+- **Multi-Tenancy:** User data fully isolated by user_id
+- **CASCADE:** tag deletion automatically removes text_tags
 
 ---
 
 ## Bugs Fixed During Testing
 
-### 1. Missing `source` Field in AI Tags
-**Issue:** Auto-tagging failed with "null value in column 'source'" error
+### 1. Scrolling Issue in Tag Manager
+**Issue:** Only 13 of 15 tags visible, no scrollbar
 
-**Fix:** Added `source: 'ai' as const` in `useAutoTag.ts` line 92
-```typescript
-const tagAssignments = analyzedTags.map((tag) => ({
-  text_id: textId,
-  tag_id: tag.id,
-  confidence: tag.confidence,
-  source: 'ai' as const, // ← Fixed
-}));
-```
+**Fix:** Added `overflow-y-auto` and `max-h-[calc(100vh-120px)]` to tag list container
 
-**Commit:** `b3d7f7e - Fix: Add source field to AI tag assignments`
+**File:** `src/components/tags/TagManager.tsx` line 127
 
----
+**Commit:** `727a5e8 - Fix: Add scrolling to Tag Manager panel for viewing all tags`
 
-## Known Issues / Observations
+### 2. Escape Key Closing Panel During Edit
+**Issue:** Pressing Escape to cancel inline edit closed entire Tag Manager panel
 
-### Minor Issues (Non-blocking)
+**Fix:** Intercepted `onOpenChange` callback - when closing while editing, cancel edit instead of closing panel
 
-1. **Password Reset Flow**
-   - Password reset email sends successfully
-   - But no UI page to actually reset password
-   - **Workaround:** Delete user and re-create for testing
-   - **For Phase 2+:** Consider implementing password reset page
+**Implementation:** Added `handleOpenChange` handler that checks `editingTagId` state
 
-2. **Onboarding Race Condition (Rare)**
-   - Occasionally tags don't initialize on first signup
-   - Manual workaround: Clear localStorage and refresh
-   - Functionality works on retry
-   - **For Phase 2:** Consider adding loading state/retry logic
+**Files:** `src/components/tags/TagManager.tsx` lines 108-115
 
-3. **Email Confirmation Requirement**
-   - Requires email confirmation by default
-   - Can be disabled in Supabase for easier testing
-   - **Location:** Supabase Dashboard → Authentication → Providers → Email
-
-### No Issues Found
-- ✅ Multi-tenant isolation works perfectly
-- ✅ RLS policies enforce data separation
-- ✅ AI tagging works reliably
-- ✅ All CRUD operations working
+**Commits:**
+- `5d45b7b - Fix: Prevent Tag Manager panel from closing when Escape cancels edit`
+- `a9dffba - Fix: Prevent Tag Manager panel from closing when Escape cancels edit (improved)`
 
 ---
 
 ## Testing Performed
 
-### Test Accounts Created
-1. **User 1:** alexanderlapygin@gmail.com (confirmed via Gmail)
-2. **User 2:** test2@gmail.com (email confirmation disabled)
+### All Phase 2 Tests: ✅ PASSED
 
-### Tests Passed ✅
-- [x] Landing page loads
-- [x] Sign up creates user
-- [x] Email confirmation works
-- [x] Sign in with credentials
-- [x] Onboarding modal appears
-- [x] 15 default tags created (verified in DB)
-- [x] Add text works
-- [x] AI auto-tagging works (Claude API)
-- [x] Tags show with confidence %
-- [x] Sign out redirects to landing
-- [x] **Data isolation:** User A cannot see User B's data
-- [x] **Data isolation:** User B cannot see User A's data
-- [x] Protected routes redirect when logged out
-- [x] Search by tags works
+**Test 1: Tag Manager Panel**
+- ✅ Opens/closes smoothly with "Tags" button
+- ✅ Slides in from left side
+- ✅ Scrollable when tag list exceeds viewport height
 
-### Database Verification ✅
-- Supabase → Table Editor → tags: 30 rows (15 per user)
-- Supabase → Table Editor → texts: Multiple texts with different user_ids
-- Supabase → Table Editor → text_tags: AI tags with source='ai'
-- RLS policies: 12 policies active (verified via SQL query)
+**Test 2: View Tags and Usage Counts**
+- ✅ All 15 tags visible with scrolling
+- ✅ Format: "Tag Name (N)" where N = usage count
+- ✅ Real-time counts (not hardcoded placeholders)
+
+**Test 3: Create Tag**
+- ✅ Validation: empty name → error
+- ✅ Validation: > 50 chars → error
+- ✅ Valid name → tag created successfully
+- ✅ Tag appears in list immediately
+
+**Test 4: Duplicate Tag Detection**
+- ✅ Creating duplicate shows: "A tag with this name already exists"
+- ✅ Database unique constraint enforced
+
+**Test 5: Inline Tag Rename**
+- ✅ Click [✏️] → edit mode activated
+- ✅ Enter key → saves changes
+- ✅ Escape key → cancels edit, panel stays open
+- ✅ Optimistic updates work correctly
+- ✅ Duplicate name error handling
+
+**Test 6: Delete Tag**
+- ✅ Confirmation dialog shows usage count
+- ✅ "Remove tag from N texts" message
+- ✅ Cancel button works
+- ✅ Delete removes tag everywhere (CASCADE)
+- ✅ Optimistic updates
+
+**Test 7: Auto-Tag Existing Texts**
+- ✅ Checkbox appears in Add Tag dialog
+- ✅ Text count displays correctly
+- ✅ Progress bar animates during batch processing
+- ✅ Status messages update: "Analyzing text X of Y..."
+- ✅ Completion summary shows success/error counts
+- ✅ Dialog auto-closes after completion
+- ✅ New tags appear on texts with correct confidence
 
 ---
 
-## Environment Setup
+## Implementation Details
 
-### Required Credentials
-- ✅ `.env.local` created (gitignored)
-- ✅ Supabase URL configured
-- ✅ Supabase Anon Key configured
-- ✅ Anthropic API Key configured
+### Components Created (Phase 2)
 
-### Supabase Configuration
-- **Email Confirmation:** Can be disabled for testing
-- **Email Provider:** Enabled
-- **RLS:** Enabled on all tables
+**Tag Management:**
+- `TagManager.tsx` - Main collapsible panel (242 lines)
+- `AddTagDialog.tsx` - Create tag modal with auto-tag checkbox (158 lines)
+- `DeleteTagDialog.tsx` - Confirmation dialog (126 lines)
 
-### Development Commands
-```bash
-npm install          # Dependencies installed
-npm run dev          # Dev server on :3000
-npm run build        # Production build
+**UI Primitives:**
+- `Sheet.tsx` - Collapsible panel component (shadcn/ui pattern) (126 lines)
+- `Checkbox.tsx` - Checkbox component (Radix UI) (35 lines)
+
+### Hooks Created (Phase 2)
+
+**Tag CRUD:**
+- `useCreateTag.ts` - Insert new tags with validation (69 lines)
+- `useUpdateTag.ts` - Rename tags with optimistic updates (88 lines)
+- `useDeleteTag.ts` - Delete tags with CASCADE (93 lines)
+
+**Usage Counts:**
+- `useTagUsageCount.ts` - Single tag usage count (45 lines)
+- `useTagUsageCounts.ts` - Bulk usage counts for all tags (62 lines)
+
+**Batch Auto-Tagging:**
+- `useBatchAutoTag.ts` - Batch auto-tag with progress tracking (134 lines)
+
+### Files Modified (Phase 2)
+
+**Integration:**
+- `Home.tsx` - Added Tag Manager toggle button and component (127 lines)
+- `useAutoTag.ts` - Added tag-usage-counts invalidation (108 lines)
+- `package.json` / `package-lock.json` - Added @radix-ui/react-checkbox
+
+### Technical Architecture
+
+**State Management:**
+- React Query for all data fetching/mutations
+- Query keys: `['tags', user?.id]`, `['texts', user?.id]`, `['tag-usage-counts', user?.id]`
+- Optimistic updates on Create/Update/Delete
+- Proper query invalidation on mutations
+
+**Form Handling:**
+- react-hook-form + Zod for all forms
+- Validation schemas with transforms (trim whitespace)
+- Inline error display
+
+**API Integration:**
+- Reuses existing Claude API integration from Phase 1
+- Sequential batch processing (2s per text average)
+- Confidence threshold: > 0.3 for tag assignment
+- Error handling with continue-on-failure
+
+**Database:**
+- RLS policies enforce user_id filtering
+- Unique constraint on (user_id, name) for tags
+- CASCADE deletes on foreign keys
+- Optimized queries with bulk fetching
+
+---
+
+## Git History
+
+### Commits (Phase 2)
+
+```
+a9dffba - Fix: Prevent Tag Manager panel from closing when Escape cancels edit (improved)
+5d45b7b - Fix: Prevent Tag Manager panel from closing when Escape cancels edit
+727a5e8 - Fix: Add scrolling to Tag Manager panel for viewing all tags
+4fbb0f4 - Implement Phase 2.2: Auto-tag existing texts on tag creation
+898989b - Implement Phase 2.1: Tag Glossary CRUD Management
 ```
 
----
+### Statistics
 
-## Next Steps: Phase 2
-
-### Phase 2: Tag Glossary Management
-
-**Goal:** User-controlled tag CRUD operations
-
-**Features to Implement:**
-
-1. **Tag Manager UI**
-   - Sidebar or panel showing user's tags
-   - Usage count for each tag
-   - Add/Edit/Delete buttons
-
-2. **Tag CRUD Operations**
-   - **Create:** Add new custom tag
-   - **Read:** Display tag list with usage counts
-   - **Update:** Rename tag (syncs across all texts)
-   - **Delete:** Remove tag (cascades to text_tags)
-
-3. **Tag Synchronization**
-   - Rename tag → updates everywhere automatically
-   - Delete tag → confirmation dialog showing usage count
-   - Delete → CASCADE removes all text_tags relationships
-
-4. **Optional: Auto-Tag Existing Texts**
-   - When adding new tag, option to "auto-tag existing texts"
-   - Batch process all user's texts with new tag
-   - Progress indicator for bulk operation
-
-**Reference:**
-- Spec: `docs/prototype-specification.md` lines 343-455
-- Component structure: lines 1018-1063
-- Subagent to use: `frontend-specialist` for UI, `claude-integration-specialist` for batch tagging
+- **Branch:** `claude/li-phase-2-01MgitFbTxcNj3uX2aVmhmUG`
+- **Commits:** 5 (2 features + 3 bug fixes)
+- **Files Changed:** 17 files
+- **Lines Added:** 1,495+ insertions
+- **Components Created:** 5
+- **Hooks Created:** 7
+- **Tests Passed:** 7/7 ✅
 
 ---
 
-## Development Guidelines
+## Next Steps: Phase 3 - Manual Tag Editing
 
-### Must Follow
+### Phase 3 Overview (from spec lines 676-945)
 
-1. **Use Subagents** (MANDATORY)
-   - `frontend-specialist` - React components, UI
-   - `claude-integration-specialist` - AI features
-   - `database-specialist` - Schema changes
-   - Never implement directly without subagents
+**Goal:** Users can manually edit tags inline on text cards
 
-2. **Code Standards**
-   - TypeScript strict mode (no `any`)
-   - shadcn/ui components only
-   - Tailwind CSS (no inline styles)
-   - Proper error handling
-   - Loading states for async operations
+**Key Features to Implement:**
 
-3. **Multi-Tenancy First**
-   - All queries must filter by `user_id`
-   - React Query cache keys include `user?.id`
-   - Test with multiple users
+1. **Inline Tag Editor on Text Cards**
+   - Click tag on TextCard → edit mode (no modal)
+   - Add/remove tags directly
+   - Visual distinction:
+     - AI tags: gray badge with confidence %
+     - Manual tags: solid color with ✓ checkmark
+   - Tag source tracking (already in DB: `text_tags.source` column)
 
-4. **Git Workflow**
-   - Branch: `claude/living-tags-prototype-01Hdox2pffT4uxxwws1e96r1`
-   - Commit frequently with clear messages
-   - Push after major features
+2. **Manual Tag Preservation Logic**
+   - When AI re-tags a text:
+     - Keep all manual tags (source = 'manual')
+     - Replace only AI tags (source = 'ai')
+   - Manual tags NEVER removed by AI
+   - User can manually remove any tag (AI or manual)
+
+3. **Tag Source Visualization**
+   - AI tags: `<Badge variant="secondary">Программисты 87%</Badge>`
+   - Manual tags: `<Badge variant="default">Вовочка ✓</Badge>`
+   - Clear visual distinction for user
+
+4. **Implementation Notes**
+   - Database already supports source tracking (`text_tags.source`)
+   - Modify `useAutoTag` to preserve manual tags
+   - Update `TagBadge` component for visual distinction
+   - Add inline editing to `TextCard` component
+
+### Reference Sections in Spec
+
+- Lines 676-714: Manual tag editing UI design
+- Lines 715-802: Source tracking implementation
+- Lines 803-860: Visual distinction examples
+- Lines 861-896: AI preservation logic (code examples)
+- Lines 897-945: Testing requirements
+
+### Subagent Assignments (Phase 3)
+
+**frontend-specialist:**
+- Update TagBadge component for source visualization
+- Implement inline tag editor on TextCard
+- Add/remove tag UI components
+
+**claude-integration-specialist:**
+- Modify useAutoTag to preserve manual tags
+- Implement manual tag assignment logic
+- Query filtering by source
 
 ---
 
 ## Important Files & Locations
 
-### Core Files
-- `supabase/migrations/20251113000000_prototype_schema.sql` - Database schema
-- `src/hooks/useAuth.ts` - Authentication logic
-- `src/hooks/useInitializeDefaultTags.ts` - Default tag initialization
-- `src/hooks/useAutoTag.ts` - AI tagging (FIXED: source field added)
-- `src/pages/Home.tsx` - Main app page
-- `src/pages/Landing.tsx` - Landing page
-- `src/App.tsx` - Router setup
+### Core Phase 2 Files
+
+**Components:**
+- `src/components/tags/TagManager.tsx` - Main tag management panel
+- `src/components/tags/AddTagDialog.tsx` - Create tag modal
+- `src/components/tags/DeleteTagDialog.tsx` - Delete confirmation
+- `src/components/ui/sheet.tsx` - Collapsible panel UI
+- `src/components/ui/checkbox.tsx` - Checkbox component
+
+**Hooks:**
+- `src/hooks/useCreateTag.ts` - Create tag mutation
+- `src/hooks/useUpdateTag.ts` - Rename tag mutation
+- `src/hooks/useDeleteTag.ts` - Delete tag mutation
+- `src/hooks/useTagUsageCounts.ts` - Bulk usage counts
+- `src/hooks/useBatchAutoTag.ts` - Batch auto-tagging
+
+**Integration:**
+- `src/pages/Home.tsx` - Tag Manager integration (lines 21, 96-99, 120-123)
+- `src/hooks/useAutoTag.ts` - Query invalidation for usage counts
+
+### Files for Phase 3 (will need modification)
+
+**Components to modify:**
+- `src/components/texts/TextCard.tsx` - Add inline tag editing
+- `src/components/tags/TagBadge.tsx` - Add source visualization
+
+**Hooks to modify:**
+- `src/hooks/useAutoTag.ts` - Preserve manual tags during re-tagging
+- `src/hooks/useAddText.ts` - Potentially for manual tag assignment
+
+**Types to update:**
+- `src/types/index.ts` - May need to add source to TextTag interface
 
 ### Documentation
-- `README.md` - Project overview and status
-- `docs/phase1-setup-guide.md` - Complete setup instructions
-- `docs/prototype-specification.md` - Full technical spec
-- `docs/PROJECT-HANDOFF.md` - Project context
 
-### Configuration
-- `.env.local` - Environment variables (gitignored)
-- `package.json` - Dependencies
-- `tsconfig.json` - TypeScript config
+- `docs/prototype-specification.md` - Full technical spec
+- `docs/PROJECT-HANDOFF.md` - Project overview
+- `README.md` - Project status
+- `SESSION-HANDOFF.md` - This file
+
+---
+
+## Environment & Dependencies
+
+### Required Credentials
+
+✅ `.env.local` configured with:
+- Supabase URL
+- Supabase Anon Key
+- Anthropic API Key
+
+### Installed Dependencies (Phase 2)
+
+- `@radix-ui/react-checkbox` - Checkbox UI component
+
+### Development Commands
+
+```bash
+npm install          # Install dependencies
+npm run dev          # Dev server on :3000
+npm run build        # Production build
+npx tsc --noEmit     # Type check
+```
+
+---
+
+## Known Issues / Observations
+
+### None Currently
+
+All Phase 2 features tested and working correctly. No known bugs or issues.
+
+### Previous Issues (Resolved)
+
+- ✅ Scrolling in Tag Manager (fixed: 727a5e8)
+- ✅ Escape key closing panel (fixed: a9dffba)
 
 ---
 
 ## Quick Start for Next Session
 
 ### 1. Pull Latest Code
+
 ```bash
-git checkout claude/living-tags-prototype-01Hdox2pffT4uxxwws1e96r1
-git pull origin claude/living-tags-prototype-01Hdox2pffT4uxxwws1e96r1
+git checkout claude/li-phase-2-01MgitFbTxcNj3uX2aVmhmUG
+git pull origin claude/li-phase-2-01MgitFbTxcNj3uX2aVmhmUG
 ```
 
 ### 2. Verify Environment
+
 - Check `.env.local` exists with credentials
 - Run `npm install` if needed
 - Run `npm run dev` to start server
 
 ### 3. Test Current State
-- Sign in as test user
-- Add a text
-- Verify AI tagging works
-- Check multi-tenant isolation
 
-### 4. Start Phase 2
-- Read `docs/prototype-specification.md` lines 343-455
-- Plan Tag Manager UI layout
+- Sign in as test user
+- Open Tag Manager (Tags button)
+- Verify all CRUD operations work
+- Add a text and verify auto-tagging works
+
+### 4. Start Phase 3
+
+- Read `docs/prototype-specification.md` lines 676-945
+- Review database schema for `text_tags.source` column
+- Plan inline tag editing UI on TextCard
 - Use `frontend-specialist` subagent for implementation
 
 ---
 
-## Questions & Decisions Made
+## Database Schema Reference (for Phase 3)
 
-### Why No PoC Data Migration?
-**Decision:** Clean schema approach (no data migration from PoC)
-**Reason:** Simpler, users can re-import via import feature (Phase 4)
+### text_tags table (already supports source tracking)
 
-### Why Email Confirmation Required?
-**Decision:** Supabase default, can be disabled for testing
-**Reason:** Production-ready security, but flexible for dev
+```sql
+CREATE TABLE text_tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  text_id UUID NOT NULL REFERENCES texts(id) ON DELETE CASCADE,
+  tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  confidence DECIMAL(3,2) NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  source TEXT NOT NULL CHECK (source IN ('ai', 'manual')),  -- ← Key field for Phase 3
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(text_id, tag_id)
+);
+```
 
-### Why Source Tracking in text_tags?
-**Decision:** Added `source` column ('ai' | 'manual')
-**Reason:** Phase 3 requires distinguishing AI vs manual tags for preservation logic
+**Source values:**
+- `'ai'` - Tag assigned by Claude API
+- `'manual'` - Tag assigned/verified by user
 
-### Why 15 Default Tags?
-**Decision:** Pre-populate Russian joke categories
-**Reason:** Better UX, users can start immediately without manual tag creation
+**Current usage:**
+- Phase 1: All tags created with `source: 'ai'`
+- Phase 2: Batch auto-tagging uses `source: 'ai'`
+- Phase 3: Will add manual tag assignment with `source: 'manual'`
+
+---
+
+## Success Criteria (Phase 2)
+
+All criteria met:
+
+- ✅ Users can create custom tags
+- ✅ Users can rename tags (inline editing)
+- ✅ Users can delete tags with confirmation
+- ✅ Usage counts display correctly
+- ✅ Auto-tag existing texts works with progress UI
+- ✅ No TypeScript errors or `any` types
+- ✅ All UI uses shadcn/ui components
+- ✅ Multi-tenant isolation maintained
+- ✅ All tests passed (7/7)
 
 ---
 
 ## Contact & Support
 
-**For issues:**
-1. Check `docs/phase1-setup-guide.md` troubleshooting section
-2. Review `docs/prototype-specification.md` for feature details
-3. Check `.claude/subagents/` for development patterns
+**For Phase 3 implementation:**
+1. Review spec lines 676-945 for manual tag editing requirements
+2. Check database schema for `source` column support
+3. Use frontend-specialist for UI components
+4. Use claude-integration-specialist for AI preservation logic
 
-**Branch:** `claude/living-tags-prototype-01Hdox2pffT4uxxwws1e96r1`
-**Last Commit:** `b3d7f7e - Fix: Add source field to AI tag assignments`
-**Build Status:** ✅ Successful (582.70 kB)
+**Branch:** `claude/li-phase-2-01MgitFbTxcNj3uX2aVmhmUG`
+**Last Commit:** `a9dffba - Fix: Prevent Tag Manager panel from closing when Escape cancels edit (improved)`
+**Status:** ✅ All Phase 2 features complete and tested
 
 ---
 
 ## Summary
 
-✅ **Phase 1 is complete and fully tested**
-✅ **Multi-tenant system works perfectly**
-✅ **All core features functional**
-✅ **Database properly configured**
-✅ **Ready to begin Phase 2: Tag Glossary Management**
+✅ **Phase 2 is complete and fully tested**
+✅ **Tag CRUD operations working perfectly**
+✅ **Auto-tag existing texts with progress UI**
+✅ **All bugs fixed during testing**
+✅ **Ready to begin Phase 3: Manual Tag Editing**
 
 **Next session should:**
-1. Review this handoff
-2. Test current functionality
-3. Read Phase 2 spec (lines 343-455)
-4. Implement Tag Manager UI using frontend-specialist
-5. Add tag CRUD operations
+1. Review this handoff document
+2. Test current Phase 2 functionality
+3. Read Phase 3 spec (lines 676-945)
+4. Implement inline tag editing on TextCard
+5. Add visual distinction for AI vs manual tags
+6. Modify useAutoTag to preserve manual tags
 
-Good luck! 🚀
+Good luck with Phase 3! 🚀

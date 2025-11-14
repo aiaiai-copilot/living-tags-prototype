@@ -105,6 +105,8 @@ export function useAutoTag() {
     onSuccess: () => {
       // Invalidate texts query to show newly assigned tags
       queryClient.invalidateQueries({ queryKey: ['texts'] });
+      // Invalidate tag usage counts since text_tags were modified
+      queryClient.invalidateQueries({ queryKey: ['tag-usage-counts'] });
     },
   });
 }

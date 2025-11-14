@@ -241,6 +241,8 @@
 
 ## Next Steps: Phase 4 - Import/Export
 
+> **📖 IMPORTANT**: Before starting Phase 4, read the complete specification in `docs/prototype-specification.md`. The overview below is a summary - the specification contains full implementation details, edge cases, and requirements.
+
 ### Phase 4 Overview
 
 **Goal:** Users can import/export texts with tags in JSONL format
@@ -287,6 +289,14 @@
 
 **Types:**
 - `src/types/index.ts` - TextTag and TextWithTags interfaces
+
+### Documentation
+
+**Project Documentation:**
+- `docs/prototype-specification.md` - **Complete technical specification (READ THIS!)**
+- `docs/PROJECT-HANDOFF.md` - Project overview and initial setup
+- `README.md` - Quick start guide
+- `SESSION-HANDOFF.md` - This file (Phase 3 status)
 
 ---
 
@@ -341,7 +351,8 @@ git pull origin claude/living-tags-phase-3-01R5ZLNUJTUfYMxJKvAzu4xt
 
 ### 4. Start Phase 4 (if testing passes)
 
-- Read Phase 4 spec (Import/Export)
+- **IMPORTANT**: Read `docs/prototype-specification.md` for Phase 4 details
+- Phase 4 spec is in the specification document (Import/Export section)
 - Review JSONL format requirements
 - Plan import/export UI flow
 - Create import/export components
@@ -378,7 +389,7 @@ All criteria met:
 1. Review this handoff document
 2. Test Phase 3 functionality thoroughly
 3. Verify manual tag preservation works
-4. Read Phase 4 spec (Import/Export)
-5. Implement import/export JSONL functionality
+4. **Read `docs/prototype-specification.md`** for complete Phase 4 requirements
+5. Implement import/export JSONL functionality as specified
 
 Good luck with testing and Phase 4! 🚀

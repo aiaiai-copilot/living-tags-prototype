@@ -50,7 +50,7 @@ This document specifies the Prototype (Stage 2) of the Living Tags platform - a 
 - **Authentication:** Supabase Auth (email/password, social login optional)
 - **File Handling:** Browser File API (no additional dependencies)
 - **JSON Validation:** zod (already included)
-- **Toast Notifications:** sonner ^1.x.x (Phase 3+)
+- **Toast Notifications:** sonner ^1.x.x
 
 ---
 
@@ -703,6 +703,36 @@ Legend:
   [+ Add tag ▾]→ Opens inline dropdown to add tags
 ```
 
+#### Search Functionality
+
+**Multi-Tag Search with AND Logic:**
+Search for texts that have ALL specified tags, not just one.
+
+```typescript
+// Search query parsing
+const searchTerms = searchQuery
+  .toLowerCase()
+  .trim()
+  .split(/[\s,]+/)  // Split by spaces or commas
+  .filter(term => term.length > 0);
+
+// Filter texts that have ALL search terms (AND operation)
+const filteredTexts = texts.filter(text =>
+  searchTerms.every(searchTerm =>
+    text.tags.some(tag =>
+      tag.name.toLowerCase().includes(searchTerm)
+    )
+  )
+);
+```
+
+**Examples:**
+- Search: `"вов"` → Finds texts with "Вовочка" tag
+- Search: `"вов прог"` → Finds texts with BOTH "Вовочка" AND "Программисты" tags
+- Search: `"вов, прог"` → Same as above (comma-separated)
+
+**Use case:** Users can narrow down results with multiple criteria, finding texts that belong to specific intersections of tag categories.
+
 #### Responsive Design
 
 - **Desktop (>1024px):** Sidebar + main content
@@ -744,6 +774,42 @@ Legend:
   Failed to auto-tag text. You can add tags manually.
 </Toast>
 ```
+
+#### User Feedback (Toast Notifications)
+
+Toast notifications provide user feedback for operations, especially errors and long-running processes.
+
+**Library:** sonner (lightweight, shadcn/ui compatible)
+
+**Setup:**
+```typescript
+// App.tsx
+import { Toaster } from 'sonner';
+<Toaster position="top-right" richColors />
+```
+
+**Notification Strategy:**
+- **Error toasts:** For all failures (tag add/remove, AI operations)
+- **Success toasts:** Only for long-running operations (AI auto-tagging)
+- **Info toasts:** When AI finds no matching tags
+
+```typescript
+// Error notification (on mutation failure)
+onError: (err) => {
+  toast.error('Не удалось удалить тег', {
+    description: err.message
+  });
+}
+
+// Success notification (for AI operations)
+onSuccess: (data) => {
+  toast.success('AI-теги успешно назначены', {
+    description: `Назначено тегов: ${data.length}`
+  });
+}
+```
+
+**Design Principle:** Manual tag add/remove operations use optimistic updates for instant visual feedback. Success toasts are not needed for these operations because the UI change is immediately visible. Reserve success toasts for long-running operations like AI tagging (2-5 seconds).
 
 ---
 
@@ -846,13 +912,57 @@ Legend:
    - Checked = currently assigned to this text
    - Unchecked = not assigned
 4. User types to filter: "про" → shows "Программисты"
-5. User clicks checkbox or tag name
+5. User clicks checkbox or tag name (or uses keyboard navigation)
 6. Tag added immediately with:
    - confidence = 1.0
    - source = 'manual'
 7. Dropdown stays open for adding multiple tags
 8. Click outside or press Escape to close
 ```
+
+**Keyboard Navigation in Dropdown:**
+Standard combobox behavior for searchable dropdown:
+- **Arrow Down:** Move highlight to next tag in list
+- **Arrow Up:** Move highlight to previous tag
+- **Enter:** Add highlighted tag
+- **Mouse hover:** Syncs highlight position with cursor
+- **Auto-scroll:** Highlighted item stays in visible area
+
+```typescript
+const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+const handleKeyDown = (e: React.KeyboardEvent) => {
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      setHighlightedIndex(prev =>
+        prev < filteredTags.length - 1 ? prev + 1 : prev
+      );
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      setHighlightedIndex(prev => prev > 0 ? prev - 1 : prev);
+      break;
+    case 'Enter':
+      if (highlightedIndex >= 0) {
+        onTagAdded(filteredTags[highlightedIndex].id);
+        setHighlightedIndex(-1);
+      }
+      break;
+  }
+};
+
+// Visual highlight
+<div className={isHighlighted ? 'bg-accent' : 'hover:bg-accent'}>
+  {tag.name}
+</div>
+```
+
+**AI→Manual Tag Conversion:**
+If user clicks on a tag that is already assigned (AI tag), it converts to manual:
+- Tag "Штирлиц 87%" (AI) → Click in dropdown → "Штирлиц ✓" (manual)
+- Uses UPSERT: updates source='manual', confidence=1.0
+- Use case: User confirms AI suggestion is correct by "endorsing" it
 
 **Removing a Tag:**
 ```
@@ -908,6 +1018,9 @@ ORDER BY t.created_at DESC;
 #### React Query Integration
 
 **useMutations:**
+
+**Important:** When texts query includes a searchQuery parameter (e.g., `['texts', userId, searchQuery]`), optimistic updates must handle all query variations using `exact: false`.
+
 ```typescript
 // Add manual tag
 const addManualTag = useMutation({
@@ -923,24 +1036,42 @@ const addManualTag = useMutation({
     if (error) throw error;
   },
   onMutate: async ({ textId, tagId }) => {
-    // Optimistic update: add tag to UI immediately
-    await queryClient.cancelQueries(['texts']);
-    const previous = queryClient.getQueryData(['texts']);
-    queryClient.setQueryData(['texts'], (old) => {
-      // Add tag to text
+    // Cancel ALL text queries (with any searchQuery)
+    await queryClient.cancelQueries({
+      queryKey: ['texts', user?.id],
+      exact: false
     });
-    return { previous };
+
+    // Snapshot ALL queries for rollback
+    const previousQueries = queryClient.getQueriesData({
+      queryKey: ['texts', user?.id],
+      exact: false
+    });
+
+    // Update ALL matching queries optimistically
+    queryClient.setQueriesData(
+      { queryKey: ['texts', user?.id], exact: false },
+      (old) => /* add tag to text */
+    );
+
+    return { previousQueries };
   },
   onError: (err, variables, context) => {
-    // Rollback on error
-    queryClient.setQueryData(['texts'], context.previous);
+    // Rollback ALL queries on error
+    context?.previousQueries.forEach(([queryKey, data]) => {
+      queryClient.setQueryData(queryKey, data);
+    });
+    toast.error('Failed to add tag', { description: err.message });
   },
   onSettled: () => {
-    queryClient.invalidateQueries(['texts']);
+    queryClient.invalidateQueries({
+      queryKey: ['texts', user?.id],
+      exact: false
+    });
   }
 });
 
-// Remove tag
+// Remove tag - similar pattern with exact: false
 const removeTag = useMutation({
   mutationFn: async ({ textId, tagId }) => {
     const { error } = await supabase
@@ -950,57 +1081,67 @@ const removeTag = useMutation({
     if (error) throw error;
   },
   onMutate: async ({ textId, tagId }) => {
-    // Optimistic update: remove tag from UI immediately
-    // Similar to addManualTag
+    // Same pattern as addManualTag with exact: false
   },
   onError: (err, variables, context) => {
-    queryClient.setQueryData(['texts'], context.previous);
+    // Rollback + toast notification
   },
   onSettled: () => {
-    queryClient.invalidateQueries(['texts']);
+    queryClient.invalidateQueries({
+      queryKey: ['texts', user?.id],
+      exact: false
+    });
   }
 });
 ```
 
+This pattern ensures optimistic updates work correctly regardless of active search filters.
+
 #### AI Auto-Tagging Updates
 
-When AI auto-tags a text, it should **respect manual tags**:
+When AI auto-tags a text, it must **respect manual tags** and **avoid duplicate key errors**:
 
 ```typescript
 async function autoTagText(textId: string, content: string, availableTags: Tag[]) {
   // 1. Get existing manual tags
   const { data: existingTags } = await supabase
     .from('text_tags')
-    .select('tag_id, source')
+    .select('tag_id')
     .eq('text_id', textId)
     .eq('source', 'manual');
 
-  const manualTagIds = existingTags?.map(t => t.tag_id) || [];
+  const manualTagIds = new Set(existingTags?.map(t => t.tag_id) || []);
 
   // 2. Call Claude API
   const aiSuggestions = await callClaudeAPI(content, availableTags);
 
-  // 3. Only insert AI suggestions, preserve manual tags
-  const tagsToInsert = aiSuggestions.map(suggestion => ({
-    text_id: textId,
-    tag_id: suggestion.id,
-    confidence: suggestion.confidence,
-    source: 'ai' as const
-  }));
-
-  // 4. Delete only AI tags, keep manual
+  // 3. Delete only AI tags, keep manual
   await supabase
     .from('text_tags')
     .delete()
     .eq('text_id', textId)
     .eq('source', 'ai');
 
-  // 5. Insert new AI tags
-  await supabase
-    .from('text_tags')
-    .insert(tagsToInsert);
+  // 4. Filter out AI suggestions that conflict with manual tags
+  // This prevents duplicate key errors when AI suggests a tag
+  // that the user already added manually
+  const tagsToInsert = aiSuggestions
+    .filter(suggestion => !manualTagIds.has(suggestion.id))
+    .map(suggestion => ({
+      text_id: textId,
+      tag_id: suggestion.id,
+      confidence: suggestion.confidence,
+      source: 'ai' as const
+    }));
 
-  // Manual tags remain untouched
+  // 5. Insert only non-conflicting AI tags
+  if (tagsToInsert.length > 0) {
+    await supabase
+      .from('text_tags')
+      .insert(tagsToInsert);
+  }
+
+  // Manual tags remain untouched, no duplicate key errors
 }
 ```
 
@@ -1051,216 +1192,6 @@ interface TagDropdownProps {
 11. Tag removed immediately
 12. Final state: [Программисты 92%] [Современные ✓]
 ```
-
----
-
-### 7. Enhanced UX Features (Phase 3+)
-
-These features were added beyond the core specification to improve user experience:
-
-#### Multi-Tag Search with AND Logic
-
-**Feature:** Search for texts that have ALL specified tags, not just one.
-
-```typescript
-// Search query parsing
-const searchTerms = searchQuery
-  .toLowerCase()
-  .trim()
-  .split(/[\s,]+/)  // Split by spaces or commas
-  .filter(term => term.length > 0);
-
-// Filter texts that have ALL search terms (AND operation)
-const filteredTexts = texts.filter(text =>
-  searchTerms.every(searchTerm =>
-    text.tags.some(tag =>
-      tag.name.toLowerCase().includes(searchTerm)
-    )
-  )
-);
-```
-
-**Example:**
-- Search: `"вов прог"`
-- Finds: Texts with both "Вовочка" AND "Программисты" tags
-- Use case: Narrow down results with multiple criteria
-
-#### Arrow Key Navigation in Tag Dropdown
-
-**Feature:** Standard keyboard navigation for searchable dropdown.
-
-**Behavior:**
-- **Arrow Down:** Move highlight to next tag in list
-- **Arrow Up:** Move highlight to previous tag
-- **Enter:** Add highlighted tag
-- **Mouse hover:** Syncs highlight position with cursor
-- **Auto-scroll:** Highlighted item stays in visible area
-
-**Implementation:**
-```typescript
-const [highlightedIndex, setHighlightedIndex] = useState(-1);
-
-const handleKeyDown = (e: React.KeyboardEvent) => {
-  switch (e.key) {
-    case 'ArrowDown':
-      e.preventDefault();
-      setHighlightedIndex(prev =>
-        prev < filteredTags.length - 1 ? prev + 1 : prev
-      );
-      break;
-    case 'ArrowUp':
-      e.preventDefault();
-      setHighlightedIndex(prev => prev > 0 ? prev - 1 : prev);
-      break;
-    case 'Enter':
-      if (highlightedIndex >= 0) {
-        onTagAdded(filteredTags[highlightedIndex].id);
-        setHighlightedIndex(-1);
-      }
-      break;
-  }
-};
-
-// Visual highlight
-<div className={isHighlighted ? 'bg-accent' : 'hover:bg-accent'}>
-  {tag.name}
-</div>
-```
-
-#### AI→Manual Tag Conversion
-
-**Feature:** Clicking on an already-assigned AI tag converts it to manual.
-
-**Behavior:**
-- Tag "Штирлиц 87%" (AI) → Click in dropdown → "Штирлиц ✓" (manual)
-- Uses UPSERT: updates source='manual', confidence=1.0
-- Instant visual feedback via optimistic update
-
-**Use case:** User confirms AI suggestion is correct by "endorsing" it as manual.
-
-#### Toast Notifications
-
-**Feature:** User feedback for operations, especially errors and long-running processes.
-
-**Library:** sonner (lightweight, shadcn/ui compatible)
-
-**Notification Strategy:**
-- **Error toasts:** For all failures (tag add/remove, AI operations)
-- **Success toasts:** Only for long-running operations (AI auto-tagging)
-- **Info toasts:** When AI finds no matching tags
-
-```typescript
-// Setup in App.tsx
-import { Toaster } from 'sonner';
-<Toaster position="top-right" richColors />
-
-// Error notification (on mutation failure)
-onError: (err) => {
-  toast.error('Не удалось удалить тег', {
-    description: err.message
-  });
-}
-
-// Success notification (for AI operations)
-onSuccess: (data) => {
-  toast.success('AI-теги успешно назначены', {
-    description: `Назначено тегов: ${data.length}`
-  });
-}
-```
-
-**Why not success toast for manual add/remove?**
-- Optimistic update provides instant visual feedback
-- Toast would appear ~300ms later with "operation complete"
-- Confusing UX: tag already visible, why notify?
-- Reserve for long operations like AI tagging (2-5 seconds)
-
-#### Advanced Optimistic Updates
-
-**Feature:** Instant UI updates that work with complex query key patterns.
-
-**Problem:** useTexts uses `['texts', userId, searchQuery]` but mutations used `['texts', userId]`.
-When searchQuery exists, optimistic update went to wrong cache entry.
-
-**Solution:** Use `exact: false` to update ALL matching queries:
-
-```typescript
-onMutate: async ({ textId, tagId }) => {
-  // Cancel ALL queries with prefix
-  await queryClient.cancelQueries({
-    queryKey: ['texts', user?.id],
-    exact: false  // Match all variations
-  });
-
-  // Snapshot ALL queries
-  const previousQueries = queryClient.getQueriesData({
-    queryKey: ['texts', user?.id],
-    exact: false
-  });
-
-  // Update ALL matching queries
-  queryClient.setQueriesData(
-    { queryKey: ['texts', user?.id], exact: false },
-    (old) => /* update logic */
-  );
-
-  return { previousQueries };
-},
-onError: (err, _vars, context) => {
-  // Rollback ALL queries
-  context?.previousQueries.forEach(([key, data]) => {
-    queryClient.setQueryData(key, data);
-  });
-  toast.error('Operation failed');
-},
-onSettled: () => {
-  queryClient.invalidateQueries({
-    queryKey: ['texts', user?.id],
-    exact: false
-  });
-}
-```
-
-**Result:**
-- ✅ Works with and without search query
-- ✅ Instant UI feedback regardless of filters
-- ✅ Proper rollback on errors
-- ✅ Server-side validation after optimistic update
-
-#### AI Conflict Resolution
-
-**Feature:** Prevent duplicate key errors when AI suggests tags that user already added manually.
-
-**Problem:** AI suggests "Программисты" but user already added it manually. INSERT fails with duplicate key.
-
-**Solution:** Filter out manual tags before AI insertion:
-
-```typescript
-// In useAutoTag.ts
-// 1. Get existing manual tags
-const { data: manualTags } = await supabase
-  .from('text_tags')
-  .select('tag_id')
-  .eq('text_id', textId)
-  .eq('source', 'manual');
-
-const manualTagIds = new Set(manualTags?.map(t => t.tag_id));
-
-// 2. Filter AI suggestions
-const tagsToInsert = aiSuggestions.filter(
-  tag => !manualTagIds.has(tag.id)
-);
-
-// 3. Only insert non-conflicting tags
-if (tagsToInsert.length > 0) {
-  await supabase.from('text_tags').insert(tagsToInsert);
-}
-```
-
-**Result:**
-- ✅ No duplicate key errors
-- ✅ Manual tags always preserved
-- ✅ AI can suggest same tag without conflict
 
 ---
 

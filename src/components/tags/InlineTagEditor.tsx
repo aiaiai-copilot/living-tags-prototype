@@ -38,6 +38,22 @@ export function InlineTagEditor({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && filteredTags.length > 0) {
+      e.preventDefault();
+      // Find first unassigned tag from filtered list
+      const firstUnassignedTag = filteredTags.find(
+        tag => !currentTagIds.includes(tag.id)
+      );
+
+      if (firstUnassignedTag) {
+        onTagAdded(firstUnassignedTag.id);
+        // Clear search to show all tags again
+        setSearchQuery("");
+      }
+    }
+  };
+
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
@@ -66,6 +82,7 @@ export function InlineTagEditor({
             placeholder="Search tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="h-8 text-sm"
             autoFocus
           />

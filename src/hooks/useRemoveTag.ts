@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 /**
  * Input type for removing a tag from a text
@@ -90,13 +91,17 @@ export function useRemoveTag() {
       // Return context with previous queries for rollback on error
       return { previousQueries };
     },
-    onError: (_err, _variables, context) => {
+    onError: (err, _variables, context) => {
       // Rollback ALL queries to previous values on error
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
+      // Show error notification to user
+      toast.error('Не удалось удалить тег', {
+        description: err.message
+      });
     },
     onSettled: () => {
       // Invalidate ALL texts queries (with any searchQuery) to refetch fresh data

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 /**
  * Input type for adding a manual tag to a text
@@ -121,13 +122,17 @@ export function useAddManualTag() {
       // Return context with previous queries for rollback on error
       return { previousQueries };
     },
-    onError: (_err, _variables, context) => {
+    onError: (err, _variables, context) => {
       // Rollback ALL queries to previous values on error
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
+      // Show error notification to user
+      toast.error('Не удалось добавить тег', {
+        description: err.message
+      });
     },
     onSettled: () => {
       // Invalidate ALL texts queries (with any searchQuery) to refetch fresh data

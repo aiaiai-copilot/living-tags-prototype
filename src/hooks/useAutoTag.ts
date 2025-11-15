@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeTextForTags, type TagAnalysisResult } from '@/lib/claude';
+import { toast } from 'sonner';
 import type { Tag } from '@/types';
 
 /**
@@ -128,7 +129,19 @@ export function useAutoTag() {
 
       return analyzedTags;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Show success notification
+      const tagCount = data.length;
+      if (tagCount > 0) {
+        toast.success('AI-теги успешно назначены', {
+          description: `Назначено тегов: ${tagCount}`
+        });
+      } else {
+        toast.info('AI не нашел подходящих тегов', {
+          description: 'Попробуйте добавить теги вручную'
+        });
+      }
+
       // Invalidate ALL texts queries (with any searchQuery) to show newly assigned tags
       queryClient.invalidateQueries({
         queryKey: ['texts', user?.id],
@@ -136,6 +149,12 @@ export function useAutoTag() {
       });
       // Invalidate tag usage counts since text_tags were modified
       queryClient.invalidateQueries({ queryKey: ['tag-usage-counts', user?.id] });
+    },
+    onError: (err) => {
+      // Show error notification
+      toast.error('Не удалось выполнить AI-тегирование', {
+        description: err.message
+      });
     },
   });
 }

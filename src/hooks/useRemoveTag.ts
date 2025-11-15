@@ -87,9 +87,9 @@ export function useRemoveTag() {
         queryClient.setQueryData(['texts', user?.id], context.previousTexts);
       }
     },
-    onSuccess: () => {
-      // Only invalidate tag usage counts, not texts
-      // Texts are already updated optimistically and will stay that way
+    onSettled: () => {
+      // Always refetch after mutation completes to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ['texts', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['tag-usage-counts', user?.id] });
     },
   });

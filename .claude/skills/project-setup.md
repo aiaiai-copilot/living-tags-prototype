@@ -161,7 +161,7 @@ fi
 #!/bin/bash
 set -e
 
-echo "🚀 Living Tags PoC - Project Setup"
+echo "🚀 Living Tags - Project Setup"
 echo "=================================="
 echo ""
 

@@ -1,7 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TagBadge } from "@/components/tags/TagBadge";
+import { InlineTagEditor } from "@/components/tags/InlineTagEditor";
 import { useAutoTag } from "@/hooks/useAutoTag";
+import { useAddManualTag } from "@/hooks/useAddManualTag";
+import { useRemoveTag } from "@/hooks/useRemoveTag";
+import { useTags } from "@/hooks/useTags";
 import type { TextWithTags } from "@/types";
 import { RefreshCw } from "lucide-react";
 
@@ -11,6 +15,9 @@ interface TextCardProps {
 
 export function TextCard({ text }: TextCardProps) {
   const autoTag = useAutoTag();
+  const addManualTag = useAddManualTag();
+  const removeTag = useRemoveTag();
+  const { data: availableTags = [] } = useTags();
 
   const handleRetag = async () => {
     try {
@@ -23,8 +30,36 @@ export function TextCard({ text }: TextCardProps) {
     }
   };
 
-  // Sort tags by confidence in descending order (highest first)
-  const sortedTags = [...text.tags].sort((a, b) => b.confidence - a.confidence);
+  const handleTagAdded = async (tagId: string) => {
+    try {
+      await addManualTag.mutateAsync({
+        textId: text.id,
+        tagId,
+      });
+    } catch (error) {
+      console.error("Failed to add tag:", error);
+    }
+  };
+
+  const handleTagRemoved = async (tagId: string) => {
+    try {
+      await removeTag.mutateAsync({
+        textId: text.id,
+        tagId,
+      });
+    } catch (error) {
+      console.error("Failed to remove tag:", error);
+    }
+  };
+
+  // Sort tags: manual tags first, then by confidence (highest first)
+  const sortedTags = [...text.tags].sort((a, b) => {
+    // Manual tags come first
+    if (a.source === 'manual' && b.source === 'ai') return -1;
+    if (a.source === 'ai' && b.source === 'manual') return 1;
+    // Within same source, sort by confidence
+    return b.confidence - a.confidence;
+  });
 
   return (
     <Card className="w-full">
@@ -46,19 +81,23 @@ export function TextCard({ text }: TextCardProps) {
             />
           </Button>
         </div>
-        {text.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {sortedTags.map((tag) => (
-              <TagBadge
-                key={tag.id}
-                name={tag.name}
-                confidence={tag.confidence}
-              />
-            ))}
-          </div>
-        ) : (
-          <span className="text-xs text-muted-foreground">No tags assigned</span>
-        )}
+        <div className="flex flex-wrap gap-2 items-center">
+          {sortedTags.map((tag) => (
+            <TagBadge
+              key={tag.id}
+              name={tag.name}
+              confidence={tag.confidence}
+              source={tag.source}
+              onRemove={() => handleTagRemoved(tag.id)}
+            />
+          ))}
+          <InlineTagEditor
+            currentTagIds={text.tags.map(t => t.id)}
+            availableTags={availableTags}
+            onTagAdded={handleTagAdded}
+            disabled={addManualTag.isPending}
+          />
+        </div>
       </CardContent>
     </Card>
   );

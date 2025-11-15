@@ -165,7 +165,7 @@ SELECT 'text_tags', COUNT(*) FROM text_tags;
 #!/bin/bash
 set -e
 
-echo "🔄 Database Reset - Living Tags PoC"
+echo "🔄 Database Reset - Living Tags"
 echo "==================================="
 echo ""
 echo "⚠️  WARNING: This will DELETE ALL DATA!"

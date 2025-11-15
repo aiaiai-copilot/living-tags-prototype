@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeTextForTags, type TagAnalysisResult } from '@/lib/claude';
+import { toast } from 'sonner';
 import type { Tag } from '@/types';
 
 /**
@@ -18,7 +19,14 @@ interface AutoTagParams {
  * This hook orchestrates the entire auto-tagging process:
  * 1. Fetches all available tags from the database for the current user
  * 2. Calls Claude API to analyze the text
- * 3. Saves the tag assignments to the text_tags table
+ * 3. Gets existing manual tags to avoid conflicts
+ * 4. Deletes only AI-generated tags (preserves manual tags)
+ * 5. Filters out AI suggestions that already exist as manual tags
+ * 6. Saves new AI tag assignments to the text_tags table
+ *
+ * IMPORTANT: Manual tags (source='manual') are preserved during re-tagging.
+ * Only AI tags (source='ai') are replaced with new AI analysis.
+ * If AI suggests a tag that user already added manually, it's skipped to avoid conflicts.
  *
  * @returns Mutation result with mutateAsync function, loading state, and error
  *
@@ -74,18 +82,37 @@ export function useAutoTag() {
         return [];
       }
 
-      // Step 3: Delete existing tags for this text (if re-tagging)
+      // Step 3: Get existing manual tags to avoid conflicts
+      const { data: manualTags } = await supabase
+        .from('text_tags')
+        .select('tag_id')
+        .eq('text_id', textId)
+        .eq('source', 'manual');
+
+      const manualTagIds = new Set(manualTags?.map(t => t.tag_id) || []);
+
+      // Step 4: Delete only AI tags for this text (preserve manual tags)
       const { error: deleteError } = await supabase
         .from('text_tags')
         .delete()
-        .eq('text_id', textId);
+        .eq('text_id', textId)
+        .eq('source', 'ai');
 
       if (deleteError) {
-        console.warn('Failed to delete old tags:', deleteError.message);
+        console.warn('Failed to delete old AI tags:', deleteError.message);
       }
 
-      // Step 4: Insert new tag assignments into text_tags table
-      const tagAssignments = analyzedTags.map((tag) => ({
+      // Step 5: Filter out AI tags that already exist as manual tags
+      const tagsToInsert = analyzedTags.filter(tag => !manualTagIds.has(tag.id));
+
+      if (tagsToInsert.length === 0) {
+        // All AI-suggested tags already exist as manual tags
+        console.info('All AI-suggested tags already exist as manual tags');
+        return analyzedTags;
+      }
+
+      // Step 6: Insert new AI tag assignments (excluding manual tags)
+      const tagAssignments = tagsToInsert.map((tag) => ({
         text_id: textId,
         tag_id: tag.id,
         confidence: tag.confidence,
@@ -102,11 +129,32 @@ export function useAutoTag() {
 
       return analyzedTags;
     },
-    onSuccess: () => {
-      // Invalidate texts query to show newly assigned tags
-      queryClient.invalidateQueries({ queryKey: ['texts'] });
+    onSuccess: (data) => {
+      // Show success notification
+      const tagCount = data.length;
+      if (tagCount > 0) {
+        toast.success('AI-теги успешно назначены', {
+          description: `Назначено тегов: ${tagCount}`
+        });
+      } else {
+        toast.info('AI не нашел подходящих тегов', {
+          description: 'Попробуйте добавить теги вручную'
+        });
+      }
+
+      // Invalidate ALL texts queries (with any searchQuery) to show newly assigned tags
+      queryClient.invalidateQueries({
+        queryKey: ['texts', user?.id],
+        exact: false
+      });
       // Invalidate tag usage counts since text_tags were modified
-      queryClient.invalidateQueries({ queryKey: ['tag-usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['tag-usage-counts', user?.id] });
+    },
+    onError: (err) => {
+      // Show error notification
+      toast.error('Не удалось выполнить AI-тегирование', {
+        description: err.message
+      });
     },
   });
 }

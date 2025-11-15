@@ -1,5 +1,5 @@
 /**
- * Database types for Living Tags PoC
+ * Database types for Living Tags
  */
 
 /**
@@ -42,6 +42,7 @@ export interface TextTag {
   text_id: string;
   tag_id: string;
   confidence: number;
+  source: 'ai' | 'manual';
   created_at: string;
 }
 
@@ -49,7 +50,7 @@ export interface TextTag {
  * Extended type for texts with their associated tags
  */
 export interface TextWithTags extends Text {
-  tags: Array<Tag & { confidence: number }>;
+  tags: Array<Tag & { confidence: number; source: 'ai' | 'manual' }>;
 }
 
 /**

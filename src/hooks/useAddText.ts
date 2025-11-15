@@ -65,8 +65,11 @@ export function useAddText() {
       return data;
     },
     onSuccess: () => {
-      // Invalidate texts query to trigger a refetch
-      queryClient.invalidateQueries({ queryKey: ['texts'] });
+      // Invalidate ALL texts queries (with any searchQuery) to trigger a refetch
+      queryClient.invalidateQueries({
+        queryKey: ['texts', user?.id],
+        exact: false
+      });
     },
   });
 }

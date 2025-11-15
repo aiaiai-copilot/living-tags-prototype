@@ -36,7 +36,7 @@ export function useAddManualTag() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  return useMutation<void, Error, AddManualTagInput, { previousTexts: any }>({
+  return useMutation<void, Error, AddManualTagInput, { previousQueries: Array<[any, any]> }>({
     mutationFn: async (input: AddManualTagInput) => {
       // Validate user is authenticated
       if (!user) {
@@ -61,66 +61,80 @@ export function useAddManualTag() {
       }
     },
     onMutate: async ({ textId, tagId }) => {
-      // Cancel any outgoing refetches to prevent them from overwriting our optimistic update
-      await queryClient.cancelQueries({ queryKey: ['texts', user?.id] });
-
-      // Snapshot the previous value
-      const previousTexts = queryClient.getQueryData(['texts', user?.id]);
-
-      // Optimistically update the UI
-      queryClient.setQueryData(['texts', user?.id], (old: any) => {
-        if (!old) return old;
-
-        return old.map((text: any) => {
-          if (text.id !== textId) return text;
-
-          // Check if tag already exists
-          const existingTagIndex = text.tags.findIndex((t: any) => t.id === tagId);
-
-          if (existingTagIndex >= 0) {
-            // Update existing tag to manual
-            const updatedTags = [...text.tags];
-            updatedTags[existingTagIndex] = {
-              ...updatedTags[existingTagIndex],
-              confidence: 1.0,
-              source: 'manual'
-            };
-            return { ...text, tags: updatedTags };
-          } else {
-            // Add new manual tag - need to get tag details from tags query
-            const tags = queryClient.getQueryData(['tags', user?.id]) as any[];
-            const tagDetails = tags?.find(t => t.id === tagId);
-
-            if (tagDetails) {
-              return {
-                ...text,
-                tags: [
-                  ...text.tags,
-                  {
-                    ...tagDetails,
-                    confidence: 1.0,
-                    source: 'manual'
-                  }
-                ]
-              };
-            }
-            return text;
-          }
-        });
+      // Cancel any outgoing refetches for ALL texts queries (with any searchQuery)
+      await queryClient.cancelQueries({
+        queryKey: ['texts', user?.id],
+        exact: false
       });
 
-      // Return context with previous value for rollback on error
-      return { previousTexts };
+      // Snapshot ALL texts queries for rollback
+      const previousQueries = queryClient.getQueriesData({
+        queryKey: ['texts', user?.id],
+        exact: false
+      });
+
+      // Optimistically update ALL texts queries
+      queryClient.setQueriesData(
+        { queryKey: ['texts', user?.id], exact: false },
+        (old: any) => {
+          if (!old) return old;
+
+          return old.map((text: any) => {
+            if (text.id !== textId) return text;
+
+            // Check if tag already exists
+            const existingTagIndex = text.tags.findIndex((t: any) => t.id === tagId);
+
+            if (existingTagIndex >= 0) {
+              // Update existing tag to manual
+              const updatedTags = [...text.tags];
+              updatedTags[existingTagIndex] = {
+                ...updatedTags[existingTagIndex],
+                confidence: 1.0,
+                source: 'manual'
+              };
+              return { ...text, tags: updatedTags };
+            } else {
+              // Add new manual tag - need to get tag details from tags query
+              const tags = queryClient.getQueryData(['tags', user?.id]) as any[];
+              const tagDetails = tags?.find(t => t.id === tagId);
+
+              if (tagDetails) {
+                return {
+                  ...text,
+                  tags: [
+                    ...text.tags,
+                    {
+                      ...tagDetails,
+                      confidence: 1.0,
+                      source: 'manual'
+                    }
+                  ]
+                };
+              }
+              return text;
+            }
+          });
+        }
+      );
+
+      // Return context with previous queries for rollback on error
+      return { previousQueries };
     },
     onError: (_err, _variables, context) => {
-      // Rollback to previous value on error
-      if (context?.previousTexts) {
-        queryClient.setQueryData(['texts', user?.id], context.previousTexts);
+      // Rollback ALL queries to previous values on error
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
     },
     onSettled: () => {
-      // Always refetch after mutation completes to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ['texts', user?.id] });
+      // Invalidate ALL texts queries (with any searchQuery) to refetch fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['texts', user?.id],
+        exact: false
+      });
       queryClient.invalidateQueries({ queryKey: ['tag-usage-counts', user?.id] });
     },
   });

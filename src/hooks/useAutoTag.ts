@@ -129,10 +129,13 @@ export function useAutoTag() {
       return analyzedTags;
     },
     onSuccess: () => {
-      // Invalidate texts query to show newly assigned tags
-      queryClient.invalidateQueries({ queryKey: ['texts'] });
+      // Invalidate ALL texts queries (with any searchQuery) to show newly assigned tags
+      queryClient.invalidateQueries({
+        queryKey: ['texts', user?.id],
+        exact: false
+      });
       // Invalidate tag usage counts since text_tags were modified
-      queryClient.invalidateQueries({ queryKey: ['tag-usage-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['tag-usage-counts', user?.id] });
     },
   });
 }

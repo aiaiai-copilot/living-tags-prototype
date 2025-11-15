@@ -40,17 +40,13 @@ export function InlineTagEditor({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    console.log('KeyDown:', e.key, 'filteredTags.length:', filteredTags.length);
-    if (e.key === 'Enter' && filteredTags.length > 0) {
+    // Enter adds tag only when exactly one tag matches (clear user intent)
+    if (e.key === 'Enter' && filteredTags.length === 1) {
       e.preventDefault();
-      e.stopPropagation(); // Prevent Popover from handling Enter
-      // Add first tag from filtered list (can convert AI→manual if already assigned)
-      const firstTag = filteredTags[0];
-      if (firstTag) {
-        onTagAdded(firstTag.id);
-        // Clear search to show all tags again
-        setSearchQuery("");
-      }
+      e.stopPropagation();
+      const tag = filteredTags[0];
+      onTagAdded(tag.id);
+      setSearchQuery("");
     }
   };
 

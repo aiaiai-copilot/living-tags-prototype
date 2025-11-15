@@ -31,23 +31,21 @@ export function InlineTagEditor({
     tag.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleTagToggle = (tagId: string, isCurrentlyAssigned: boolean) => {
-    if (!isCurrentlyAssigned) {
-      // Only handle adding tags - removal is done via TagBadge remove button
-      onTagAdded(tagId);
-    }
+  const handleTagToggle = (tagId: string) => {
+    // Always call onTagAdded - it will handle both:
+    // 1. Adding new tags (if not assigned)
+    // 2. Converting AI tags to manual (if already assigned)
+    // useAddManualTag uses UPSERT which handles both cases
+    onTagAdded(tagId);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && filteredTags.length > 0) {
       e.preventDefault();
-      // Find first unassigned tag from filtered list
-      const firstUnassignedTag = filteredTags.find(
-        tag => !currentTagIds.includes(tag.id)
-      );
-
-      if (firstUnassignedTag) {
-        onTagAdded(firstUnassignedTag.id);
+      // Add first tag from filtered list (can convert AI→manual if already assigned)
+      const firstTag = filteredTags[0];
+      if (firstTag) {
+        onTagAdded(firstTag.id);
         // Clear search to show all tags again
         setSearchQuery("");
       }
@@ -100,13 +98,13 @@ export function InlineTagEditor({
                   <div
                     key={tag.id}
                     className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
-                    onClick={() => handleTagToggle(tag.id, isAssigned)}
+                    onClick={() => handleTagToggle(tag.id)}
                   >
                     <Checkbox
                       id={`tag-${tag.id}`}
                       checked={isAssigned}
                       onCheckedChange={() => {
-                        handleTagToggle(tag.id, isAssigned);
+                        handleTagToggle(tag.id);
                       }}
                       onClick={(e) => e.stopPropagation()}
                     />

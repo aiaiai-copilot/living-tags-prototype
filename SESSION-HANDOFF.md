@@ -1,326 +1,297 @@
-# Session Handoff: Living Tags Prototype - Phase 3 Complete
+# Session Handoff: Living Tags Prototype - Phase 3 Complete (Enhanced)
 
-**Date:** 2025-11-14
-**Session:** Phase 3 Implementation
-**Status:** ✅ Phase 3 Complete, Ready for Testing & Phase 4
+**Date:** 2025-11-15
+**Session:** Phase 3 Testing & Enhancements
+**Status:** ✅ Phase 3 Fully Complete, Ready for Phase 4
 **Branch:** `claude/living-tags-phase-3-01R5ZLNUJTUfYMxJKvAzu4xt`
 
 ---
 
-## What Was Completed
+## What Was Completed This Session
 
-### ✅ Phase 3: Manual Tag Editing
+### ✅ Phase 3 Enhancements & Bug Fixes
 
-**All features implemented and built successfully:**
+This session focused on testing Phase 3 features and fixing critical issues:
 
-1. **Visual Distinction Between AI and Manual Tags**
-   - AI tags display with secondary badge (light gray background)
-   - Show confidence percentage: "Программисты 92%"
-   - Manual tags display with primary badge (solid color)
-   - Show checkmark icon: "Вовочка ✓" (no percentage)
-   - Tags sorted: manual tags first, then AI tags by confidence
-   - Remove button (X) appears on hover for all tags
+1. **Multi-Tag Search with AND Logic** (Test 3)
+   - Search query `"вов прог"` finds texts with BOTH "Вовочка" AND "Программисты"
+   - Split query by spaces/commas into multiple search terms
+   - All terms must match (AND operation, not OR)
+   - File: `src/hooks/useTexts.ts:73-89`
 
-2. **Inline Tag Editor Component** (`src/components/tags/InlineTagEditor.tsx`)
-   - "+ Add tag" button on each text card
-   - Opens searchable dropdown with all available tags
-   - Checkbox for each tag (checked = currently assigned)
-   - Filter tags by typing in search box
-   - Click tag or checkbox to add it
-   - Dropdown stays open for adding multiple tags
-   - Click outside or Escape to close
+2. **AI Tag Conflict Resolution** (Test 4)
+   - Fixed duplicate key error when AI suggests tag that exists as manual
+   - AI now checks for existing manual tags before insertion
+   - Manual tags are filtered out from AI suggestions
+   - Prevents RLS policy violations
+   - File: `src/hooks/useAutoTag.ts:84-111`
 
-3. **Manual Tag Addition** (`src/hooks/useAddManualTag.ts`)
-   - Inserts text_tag with source='manual' and confidence=1.0
-   - Uses UPSERT to convert existing AI tags to manual
-   - Optimistic UI updates for instant feedback
-   - Invalidates queries to keep data in sync
-   - Error handling with rollback on failure
+3. **Enter Key Support in Tag Search** (Test 5)
+   - Press Enter to add first tag from filtered results
+   - Clears search after adding tag (shows all tags again)
+   - Can repeatedly: type → Enter → type → Enter
+   - File: `src/components/tags/InlineTagEditor.tsx:42-53`
 
-4. **Tag Removal** (`src/hooks/useRemoveTag.ts`)
-   - Removes text_tag relationship from database
-   - Works for both AI and manual tags
-   - Optimistic UI updates (tag disappears immediately)
-   - Invalidates queries to update usage counts
-   - Error handling with rollback on failure
+4. **AI→Manual Tag Conversion** (Test 6)
+   - Clicking on already-assigned tag converts it from AI to manual
+   - Changed logic: always call onTagAdded (UPSERT handles both cases)
+   - Tag immediately changes from "Tag 87%" to "Tag ✓"
+   - File: `src/components/tags/InlineTagEditor.tsx:34-40`
 
-5. **AI Tag Preservation Logic** (`src/hooks/useAutoTag.ts`)
-   - When AI re-tags a text, only AI tags are replaced
-   - Manual tags (source='manual') are PRESERVED
-   - AI deletes only where source='ai'
-   - Manual tags stay untouched during re-tagging
-   - Updated documentation to reflect this behavior
+5. **Optimistic Updates Fixed** (Test 7 - Critical Fix)
+   - **Root cause:** Query key mismatch
+     - useTexts: `['texts', userId, searchQuery]`
+     - mutations: `['texts', userId]`
+   - **Solution:** Use `setQueriesData` with `exact: false` to update ALL matching queries
+   - Tags now add/remove instantly without waiting for server
+   - Proper rollback on error with snapshot of all queries
+   - Files: `src/hooks/useAddManualTag.ts`, `src/hooks/useRemoveTag.ts`
 
-6. **Database Integration**
-   - Updated useTexts hook to fetch source field
-   - All queries include source in text_tags data
-   - Proper type definitions with source: 'ai' | 'manual'
-   - Optimistic updates handle source field correctly
+6. **Toast Notifications System**
+   - Installed `sonner` toast library
+   - Added `<Toaster>` component to App.tsx
+   - Error notifications for tag add/remove failures
+   - Success/info notifications for AI auto-tagging operations
+   - Rollback + toast on optimistic update failures
+   - Files:
+     - `src/App.tsx:2,10` - Toaster setup
+     - `src/hooks/useAddManualTag.ts:4,132-134` - Error toast
+     - `src/hooks/useRemoveTag.ts:4,101-103` - Error toast
+     - `src/hooks/useAutoTag.ts:5,135-157` - Success/error toasts
+
+---
+
+## Git History (This Session)
+
+```
+672aecb feat: Add toast notifications for AI auto-tagging operations
+8ed147b feat: Add toast notifications for tag operation errors
+bc6eaeb fix: Improve optimistic updates for instant tag add/remove
+c336034 fix: Restore query invalidation for tag add/remove operations
+a41e124 fix: Improve optimistic updates for instant tag add/remove
+df5ecab fix: Enable AI→manual tag conversion via click/Enter
+eb5f0e7 feat: Add Enter key support in tag search dropdown
+28dbe82 fix: Prevent duplicate key error when AI suggests manual tags
+acf200d fix: Support multi-tag search with AND logic
+725702c docs: Add reminders to read prototype-specification.md for Phase 4
+```
+
+**Statistics:**
+- **Commits:** 10 (bug fixes + enhancements)
+- **Files Changed:** 9 unique files
+- **Key Changes:**
+  - Optimistic updates architecture rewritten
+  - Toast notification system added
+  - Search functionality enhanced
+  - Tag conversion logic improved
 
 ---
 
 ## Current Project Status
 
-### ✅ Working Features (Phase 1 + Phase 2 + Phase 3)
+### ✅ All Phase 3 Features Complete & Tested
 
-**Phase 1 (Authentication & Core Features):**
-- Sign up / Sign in / Sign out
-- Email confirmation (Supabase Auth)
-- Protected routes with auth guards
-- Onboarding modal on first login
-- 15 default Russian tags auto-created per user
-- Add text functionality
-- AI auto-tagging with Claude API
-- Multi-tenant data isolation (RLS policies)
-- Search by tags
-
-**Phase 2 (Tag Management):**
-- Collapsible Tag Manager panel (left side, scrollable)
-- Create tag with validation and duplicate detection
-- Inline rename tag with optimistic updates
-- Delete tag with confirmation and CASCADE
-- Real-time usage count display
-- Batch auto-tag existing texts when creating new tag
-- Progress UI with status and progress bar
-
-**Phase 3 (Manual Tag Editing):**
+**Core Features:**
 - Visual distinction: AI tags (gray + %) vs manual tags (solid + ✓)
 - Inline tag editor with searchable dropdown
-- Add manual tags to any text
-- Remove tags (both AI and manual) with hover button
+- Add manual tags with UPSERT support
+- Remove tags with hover X button
 - AI re-tagging preserves manual tags
-- Optimistic updates for instant UI feedback
-- Tags sorted: manual first, then by confidence
 
-### 📊 Build Info
+**Enhanced Features (This Session):**
+- Multi-tag search with AND logic
+- AI→manual tag conversion via click
+- Enter key support in tag search
+- Instant optimistic updates (no delay)
+- Automatic rollback on errors
+- Toast notifications for user feedback
 
-- **Build Status:** ✅ Successful
-- **TypeScript:** Strict mode, no errors, no `any` types
-- **Dev Server:** Runs on http://localhost:3000
-- **Bundle:** Compiles successfully with Vite
-- **Bundle Size:** 643.81 kB (190.61 kB gzipped)
+### 📊 Technical Implementation
 
-### 🗄️ Database Status
+**Optimistic Updates Pattern:**
+```typescript
+onMutate: async () => {
+  // 1. Cancel ALL queries with prefix
+  await queryClient.cancelQueries({
+    queryKey: ['texts', user?.id],
+    exact: false  // Match all variations
+  });
 
-- **Migration Applied:** ✅ 20251113000000_prototype_schema.sql
-- **Tables:** tags, texts, text_tags (all with RLS policies)
-- **Source Field:** text_tags.source ('ai' | 'manual')
-- **Multi-Tenancy:** User data fully isolated by user_id
-- **CASCADE:** Tag deletion automatically removes text_tags
+  // 2. Snapshot ALL queries
+  const previousQueries = queryClient.getQueriesData({
+    queryKey: ['texts', user?.id],
+    exact: false
+  });
 
----
+  // 3. Update ALL queries optimistically
+  queryClient.setQueriesData(
+    { queryKey: ['texts', user?.id], exact: false },
+    (old) => /* update logic */
+  );
 
-## Implementation Details
-
-### Components Created (Phase 3)
-
-**Tag Editing:**
-- `InlineTagEditor.tsx` - Searchable tag dropdown (113 lines)
-- `Popover.tsx` - Popover UI component (30 lines, shadcn/ui pattern)
-
-**Components Updated:**
-- `TagBadge.tsx` - Added source prop, visual distinction, remove button (60 lines)
-- `TextCard.tsx` - Integrated inline editor, tag removal handlers (106 lines)
-
-### Hooks Created (Phase 3)
-
-**Manual Tag Operations:**
-- `useAddManualTag.ts` - Add manual tags with optimistic updates (128 lines)
-- `useRemoveTag.ts` - Remove tags with optimistic updates (97 lines)
-
-**Hooks Updated:**
-- `useAutoTag.ts` - Preserve manual tags during re-tagging (113 lines)
-- `useTexts.ts` - Fetch source field from database (85 lines)
-- `useBatchAutoTag.ts` - TypeScript fixes for strict mode (220 lines)
-
-### Types Updated (Phase 3)
-
-**Type Definitions:**
-- `TextTag` interface - Added source: 'ai' | 'manual'
-- `TextWithTags` interface - Include source in tags array
-
-### Technical Architecture
-
-**Tag Source Tracking:**
-- Database field: text_tags.source ('ai' or 'manual')
-- AI auto-tagging sets source='ai'
-- Manual tag addition sets source='manual'
-- Re-tagging only deletes where source='ai'
-
-**Visual Distinction:**
-- AI tags: Badge variant="secondary" (gray)
-- Manual tags: Badge variant="primary" (solid color)
-- AI tags show confidence: "Tag 87%"
-- Manual tags show checkmark: "Tag ✓"
-
-**User Interactions:**
-- Click "+ Add tag" → Opens popover
-- Type to search tags
-- Click tag/checkbox → Adds to text (source='manual')
-- Hover over tag → Shows X button
-- Click X → Removes tag
-- Click retag button → Only replaces AI tags
-
-**State Management:**
-- React Query for all data fetching/mutations
-- Optimistic updates on add/remove operations
-- Proper query invalidation: ['texts'], ['tag-usage-counts']
-- Context type properly defined for TypeScript
-
----
-
-## Git History
-
-### Commits (Phase 3)
-
-```
-822c03f - Implement Phase 3: Manual Tag Editing
+  return { previousQueries };
+},
+onError: (err, _vars, context) => {
+  // Rollback ALL queries
+  context?.previousQueries.forEach(([key, data]) => {
+    queryClient.setQueryData(key, data);
+  });
+  // Show error toast
+  toast.error('Operation failed', { description: err.message });
+},
+onSettled: () => {
+  // Invalidate ALL queries for consistency
+  queryClient.invalidateQueries({
+    queryKey: ['texts', user?.id],
+    exact: false
+  });
+}
 ```
 
-### Statistics
-
-- **Branch:** `claude/living-tags-phase-3-01R5ZLNUJTUfYMxJKvAzu4xt`
-- **Commits:** 1 (comprehensive feature implementation)
-- **Files Changed:** 12 files
-- **Lines Added:** 650+ insertions, 38 deletions
-- **Components Created:** 2
-- **Hooks Created:** 2
-- **Hooks Updated:** 3
-- **Build:** ✅ No TypeScript errors
+**Toast Notifications:**
+- `sonner` library (lightweight, shadcn/ui compatible)
+- Position: top-right with rich colors
+- AI tagging: success/info/error notifications
+- Manual operations: error notifications only (optimistic update provides instant feedback)
 
 ---
 
-## Testing Checklist for Phase 3
+## Dependencies Added
 
-**Before moving to Phase 4, test the following:**
+```json
+{
+  "sonner": "^1.x.x"  // Toast notifications
+}
+```
 
-### Test 1: Visual Distinction
-- [ ] AI tags show as gray badges with confidence %
-- [ ] Manual tags show as solid badges with checkmark ✓
-- [ ] Tags are sorted: manual first, then AI by confidence
+---
 
-### Test 2: Add Manual Tag
-- [ ] Click "+ Add tag" button opens dropdown
-- [ ] Search filters tag list correctly
-- [ ] Click tag adds it to text immediately
-- [ ] Tag appears with checkmark and solid color
-- [ ] Dropdown stays open for multiple additions
+## Known Issues & Considerations
 
-### Test 3: Remove Tag
-- [ ] Hover over tag shows X button
-- [ ] Click X removes tag immediately
-- [ ] Works for both AI and manual tags
-- [ ] Usage count updates after removal
+### Resolved Issues:
+- ✅ Query key mismatch causing optimistic updates to fail
+- ✅ Duplicate key errors when AI suggests manual tags
+- ✅ Missing Enter key support in tag search
+- ✅ No user feedback on operation failures
 
-### Test 4: Manual Tag Preservation
-- [ ] Add a manual tag to a text
-- [ ] Click retag button (refresh icon)
-- [ ] Manual tag remains after re-tagging
-- [ ] Only AI tags are replaced
-- [ ] Manual tag still shows checkmark
+### Future Considerations:
+- AI auto-tagging is slow (2-5 seconds) - consider optimistic loading state
+- No undo functionality for tag removal
+- Tag deletion could benefit from batch undo
 
-### Test 5: Convert AI to Manual
-- [ ] Text has AI tag "Программисты 87%"
-- [ ] Click "+ Add tag" and add same tag manually
-- [ ] Tag converts to "Программисты ✓"
-- [ ] Tag is now manual (source='manual')
+---
 
-### Test 6: Search and Add
-- [ ] Open tag dropdown
-- [ ] Type search query
-- [ ] Only matching tags appear
-- [ ] Add filtered tag successfully
+## Testing Checklist (All Passed ✅)
 
-### Test 7: Optimistic Updates
-- [ ] Add tag → appears immediately
-- [ ] Remove tag → disappears immediately
-- [ ] If error occurs → tag reverts
-- [ ] No UI lag or flicker
+### Test 1: Visual Distinction ✅
+- AI tags show gray badge with confidence percentage
+- Manual tags show solid badge with checkmark
+- Tags sorted: manual first, then AI by confidence
+
+### Test 2: Add Manual Tag ✅
+- "+ Add tag" opens searchable dropdown
+- Search filters tags in real-time
+- Click adds tag instantly (optimistic update)
+- Tag appears with checkmark immediately
+
+### Test 3: Multi-Tag Search ✅
+- Query "вов прог" finds texts with both tags
+- AND logic (all terms must match)
+- Supports spaces and commas as delimiters
+
+### Test 4: AI Tag Conflict ✅
+- AI skips tags that already exist as manual
+- No duplicate key errors
+- Manual tags preserved during re-tagging
+
+### Test 5: Enter Key Support ✅
+- Press Enter adds first filtered tag
+- Search clears after adding
+- Rapid tagging: type → Enter → type → Enter
+
+### Test 6: AI→Manual Conversion ✅
+- Click existing AI tag in dropdown
+- Tag converts from "Tag 87%" to "Tag ✓"
+- UPSERT handles conversion seamlessly
+
+### Test 7: Optimistic Updates ✅
+- Tag removal: instant disappearance
+- Tag addition: instant appearance
+- Error handling: automatic rollback + toast notification
+- Works with and without search query active
 
 ---
 
 ## Next Steps: Phase 4 - Import/Export
 
-> **📖 IMPORTANT**: Before starting Phase 4, read the complete specification in `docs/prototype-specification.md`. The overview below is a summary - the specification contains full implementation details, edge cases, and requirements.
+> **📖 IMPORTANT**: Read `docs/prototype-specification.md` for complete Phase 4 requirements before implementation.
 
 ### Phase 4 Overview
 
 **Goal:** Users can import/export texts with tags in JSONL format
 
-**Key Features to Implement:**
+**Key Features:**
 
 1. **Export Functionality**
-   - Export button in main UI
-   - Generates JSONL file with all user texts
-   - Each line: `{"content": "...", "tags": ["tag1", "tag2"]}`
-   - Manual tags included in export
-   - Downloads as `living-tags-export-YYYY-MM-DD.jsonl`
+   - Export button in main UI header
+   - Generate JSONL with all user texts
+   - Format: `{"content": "...", "tags": ["tag1", "tag2"]}`
+   - Include both AI and manual tags
+   - Download as `living-tags-export-YYYY-MM-DD.jsonl`
 
 2. **Import Functionality**
    - Import button with file picker
-   - Validates JSONL format
-   - Detects tag format: string array vs object array
-   - Auto-creates missing tags
-   - Batch auto-tags imported texts
-   - Progress UI with status and counts
+   - Validate JSONL format (one object per line)
+   - Create missing tags automatically
+   - Batch import texts
+   - Auto-tag imported texts (optional)
+   - Progress UI with status
 
-3. **Tag Format Detection**
-   - String array: `{"content": "...", "tags": ["tag1", "tag2"]}`
-   - Object array: `{"content": "...", "tags": [{"name": "tag1", "confidence": 0.9}]}`
-   - Handles both formats intelligently
+3. **Error Handling**
+   - Invalid JSON parsing errors
+   - Missing required fields validation
+   - Duplicate content detection
+   - Network error recovery
 
----
+### Recommended Implementation Order
 
-## Important Files & Locations
+1. **Export first** (simpler)
+   - `useExportTexts` hook
+   - Generate JSONL string
+   - Browser download trigger
+   - Toast notification on complete
 
-### Core Phase 3 Files
+2. **Import second** (more complex)
+   - `useImportTexts` hook
+   - File upload component
+   - JSONL parsing and validation
+   - Tag creation for new tags
+   - Batch text insertion
+   - Progress tracking with toast
 
-**Components:**
-- `src/components/tags/InlineTagEditor.tsx` - Searchable tag dropdown
-- `src/components/tags/TagBadge.tsx` - Tag display with source distinction
-- `src/components/texts/TextCard.tsx` - Text card with inline editing
-- `src/components/ui/popover.tsx` - Popover UI component
-
-**Hooks:**
-- `src/hooks/useAddManualTag.ts` - Add manual tags
-- `src/hooks/useRemoveTag.ts` - Remove tags
-- `src/hooks/useAutoTag.ts` - AI tagging with manual preservation
-- `src/hooks/useTexts.ts` - Fetch texts with source field
-
-**Types:**
-- `src/types/index.ts` - TextTag and TextWithTags interfaces
-
-### Documentation
-
-**Project Documentation:**
-- `docs/prototype-specification.md` - **Complete technical specification (READ THIS!)**
-- `docs/PROJECT-HANDOFF.md` - Project overview and initial setup
-- `README.md` - Quick start guide
-- `SESSION-HANDOFF.md` - This file (Phase 3 status)
+3. **UI components**
+   - Export/Import buttons in header
+   - Import progress modal
+   - Error display for failed imports
 
 ---
 
-## Environment & Dependencies
+## Files Modified This Session
 
-### Required Credentials
+### Core Logic:
+- `src/hooks/useAddManualTag.ts` - Optimistic updates + error toast
+- `src/hooks/useRemoveTag.ts` - Optimistic updates + error toast
+- `src/hooks/useAutoTag.ts` - AI conflict resolution + success toast
+- `src/hooks/useAddText.ts` - Query invalidation fix
+- `src/hooks/useTexts.ts` - Multi-tag search with AND logic
 
-✅ `.env.local` configured with:
-- Supabase URL
-- Supabase Anon Key
-- Anthropic API Key
+### UI Components:
+- `src/App.tsx` - Toaster component setup
+- `src/components/tags/InlineTagEditor.tsx` - Enter key + AI→manual conversion
 
-### Installed Dependencies (Phase 3)
-
-- `@radix-ui/react-popover` - Popover UI component for dropdown
-
-### Development Commands
-
-```bash
-npm install          # Install dependencies
-npm run dev          # Dev server on :3000
-npm run build        # Production build
-npx tsc --noEmit     # Type check
-```
+### Dependencies:
+- `package.json` - Added sonner
+- `package-lock.json` - Lock file updated
 
 ---
 
@@ -333,63 +304,73 @@ git checkout claude/living-tags-phase-3-01R5ZLNUJTUfYMxJKvAzu4xt
 git pull origin claude/living-tags-phase-3-01R5ZLNUJTUfYMxJKvAzu4xt
 ```
 
-### 2. Verify Environment
+### 2. Install Dependencies
 
-- Check `.env.local` exists with credentials
-- Run `npm install` (new dependency: @radix-ui/react-popover)
-- Run `npm run build` to verify no errors
-- Run `npm run dev` to start server
+```bash
+npm install  # Installs sonner
+```
 
-### 3. Test Phase 3 Features
+### 3. Verify Everything Works
 
-- Sign in as test user
-- Add a text with AI tags
-- Test "+ Add tag" button
-- Test tag removal with X button
-- Test manual tag preservation with retag button
-- Verify visual distinction (gray vs solid, % vs ✓)
+```bash
+npm run build  # Should compile without errors
+npm run dev    # Start dev server
+```
 
-### 4. Start Phase 4 (if testing passes)
+### 4. Quick Feature Test
 
-- **IMPORTANT**: Read `docs/prototype-specification.md` for Phase 4 details
-- Phase 4 spec is in the specification document (Import/Export section)
-- Review JSONL format requirements
-- Plan import/export UI flow
-- Create import/export components
+1. Sign in to app
+2. Add a tag → should appear instantly
+3. Remove a tag → should disappear instantly
+4. Re-tag text → toast notification appears
+5. Test offline (Network → Offline) → should rollback + error toast
+
+### 5. Start Phase 4
+
+1. Read `docs/prototype-specification.md` Phase 4 section
+2. Create export functionality first
+3. Then implement import with validation
+4. Add toast notifications for import/export operations
+5. Use existing patterns for hooks and UI
 
 ---
 
-## Success Criteria (Phase 3)
+## Key Files for Phase 4
 
-All criteria met:
+**Reference implementations:**
+- `src/hooks/useAddManualTag.ts` - Optimistic updates pattern
+- `src/hooks/useAutoTag.ts` - Complex async operation with toasts
+- `src/hooks/useBatchAutoTag.ts` - Progress tracking for batch operations
+- `src/components/tags/AddTagDialog.tsx` - Dialog pattern with validation
 
-- ✅ Visual distinction between AI and manual tags
-- ✅ Inline tag editor with searchable dropdown
-- ✅ Add manual tags to texts
-- ✅ Remove tags (both AI and manual)
-- ✅ AI re-tagging preserves manual tags
-- ✅ Optimistic updates for instant feedback
-- ✅ No TypeScript errors or `any` types
-- ✅ All UI uses shadcn/ui components
-- ✅ Multi-tenant isolation maintained
-- ✅ Build successful with strict mode
+**New files to create:**
+- `src/hooks/useExportTexts.ts` - Export logic
+- `src/hooks/useImportTexts.ts` - Import logic with validation
+- `src/components/import/ImportDialog.tsx` - Import UI with progress
+- Export button in `src/pages/Home.tsx`
 
 ---
 
 ## Summary
 
-✅ **Phase 3 is complete and ready for testing**
-✅ **Manual tag editing fully implemented**
-✅ **Visual distinction clear and intuitive**
-✅ **AI tag preservation logic working**
-✅ **All code builds without errors**
-✅ **Ready to begin Phase 4: Import/Export**
+✅ **Phase 3 fully complete with all enhancements**
+✅ **Critical optimistic updates bug fixed**
+✅ **Toast notification system integrated**
+✅ **Multi-tag search with AND logic working**
+✅ **AI→manual tag conversion seamless**
+✅ **All tests passing**
+✅ **Ready for Phase 4: Import/Export**
 
-**Next session should:**
-1. Review this handoff document
-2. Test Phase 3 functionality thoroughly
-3. Verify manual tag preservation works
-4. **Read `docs/prototype-specification.md`** for complete Phase 4 requirements
-5. Implement import/export JSONL functionality as specified
+**This session delivered:**
+- 10 commits with bug fixes and enhancements
+- Robust optimistic update architecture
+- User-friendly error handling with toasts
+- Enhanced search and tag management features
 
-Good luck with testing and Phase 4! 🚀
+**Phase 4 should focus on:**
+- JSONL export functionality
+- JSONL import with validation
+- Progress tracking for import operations
+- Consistent toast notifications for user feedback
+
+Good luck with Phase 4! 🚀

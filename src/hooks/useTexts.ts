@@ -71,10 +71,19 @@ export function useTexts(searchQuery?: string) {
 
       // Client-side filtering if search query is provided
       if (searchQuery && searchQuery.trim()) {
-        const normalizedQuery = searchQuery.toLowerCase().trim();
+        // Split query by spaces or commas to support multiple tag search
+        const searchTerms = searchQuery
+          .toLowerCase()
+          .trim()
+          .split(/[\s,]+/) // Split by spaces or commas
+          .filter(term => term.length > 0); // Remove empty strings
+
+        // Filter texts that have ALL search terms in their tags (AND operation)
         return transformedData.filter((text) =>
-          text.tags.some((tag) =>
-            tag.name.toLowerCase().includes(normalizedQuery)
+          searchTerms.every((searchTerm) =>
+            text.tags.some((tag) =>
+              tag.name.toLowerCase().includes(searchTerm)
+            )
           )
         );
       }

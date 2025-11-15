@@ -62,3 +62,37 @@ export interface TagAnalysisResult {
   confidence: number; // 0.0 to 1.0
   reasoning?: string;
 }
+
+/**
+ * Export format for Living Tags data
+ */
+export interface ExportFormat {
+  format: 'living-tags-v1';
+  exported_at: string;
+  user_email: string;
+  tag_glossary: Array<{ name: string }>;
+  texts: Array<{
+    content: string;
+    tags: Array<{
+      name: string;
+      confidence: number;
+      source: 'ai' | 'manual';
+    }>;
+    created_at: string;
+  }>;
+}
+
+/**
+ * Import format for Living Tags data - supports multiple tag formats
+ */
+export interface ImportFormat {
+  format: 'living-tags-v1';
+  texts: Array<{
+    content: string;
+    tags?: string[] | Array<{
+      name: string;
+      confidence?: number;
+      source?: 'ai' | 'manual';
+    }>;
+  }>;
+}

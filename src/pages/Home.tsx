@@ -6,11 +6,13 @@ import { TextList } from '@/components/texts/TextList'
 import { AddTextModal } from '@/components/texts/AddTextModal'
 import { OnboardingModal } from '@/components/auth/OnboardingModal'
 import { TagManager } from '@/components/tags/TagManager'
+import { ImportDialog } from '@/components/import/ImportDialog'
 import { useTexts } from '@/hooks/useTexts'
 import { useAddText } from '@/hooks/useAddText'
 import { useAuth } from '@/hooks/useAuth'
 import { useInitializeDefaultTags } from '@/hooks/useInitializeDefaultTags'
-import { Tags } from 'lucide-react'
+import { useExportTexts } from '@/hooks/useExportTexts'
+import { Tags, Download, Upload } from 'lucide-react'
 
 const ONBOARDING_SEEN_KEY = 'living-tags-onboarding-seen'
 
@@ -19,12 +21,14 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [tagManagerOpen, setTagManagerOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const navigate = useNavigate()
 
   const { data: texts, isLoading } = useTexts(searchQuery)
   const addText = useAddText()
   const { signOut, user } = useAuth()
   const { initializeTags } = useInitializeDefaultTags()
+  const exportTexts = useExportTexts()
 
   const handleAddText = async (content: string) => {
     try {
@@ -100,6 +104,23 @@ export default function Home() {
               <Tags className="h-4 w-4 mr-2" />
               Tags
             </Button>
+            <Button
+              onClick={() => setImportDialogOpen(true)}
+              variant="outline"
+              className="sm:w-auto"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+            <Button
+              onClick={() => exportTexts.mutate()}
+              variant="outline"
+              className="sm:w-auto"
+              disabled={exportTexts.isPending}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {exportTexts.isPending ? 'Exporting...' : 'Export'}
+            </Button>
             <Button onClick={() => setModalOpen(true)} className="sm:w-auto">
               + Add Text
             </Button>
@@ -129,6 +150,12 @@ export default function Home() {
         <TagManager
           open={tagManagerOpen}
           onOpenChange={setTagManagerOpen}
+        />
+
+        {/* Import Dialog */}
+        <ImportDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
         />
       </div>
     </div>

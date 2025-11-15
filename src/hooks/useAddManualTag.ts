@@ -118,9 +118,9 @@ export function useAddManualTag() {
         queryClient.setQueryData(['texts', user?.id], context.previousTexts);
       }
     },
-    onSettled: () => {
-      // Always refetch after mutation completes to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ['texts', user?.id] });
+    onSuccess: () => {
+      // Only invalidate tag usage counts, not texts
+      // Texts are already updated optimistically and will stay that way
       queryClient.invalidateQueries({ queryKey: ['tag-usage-counts', user?.id] });
     },
   });

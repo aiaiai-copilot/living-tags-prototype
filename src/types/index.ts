@@ -1,5 +1,5 @@
 /**
- * Database types for Living Tags PoC
+ * Database types for Living Tags
  */
 
 /**

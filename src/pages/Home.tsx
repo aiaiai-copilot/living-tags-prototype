@@ -78,7 +78,7 @@ export default function Home() {
         {/* Header */}
         <div className="mb-8 flex justify-between items-start">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Living Tags PoC</h1>
+            <h1 className="text-4xl font-bold mb-2">Living Tags</h1>
             <p className="text-muted-foreground">
               AI-powered text tagging for Russian jokes and anecdotes
             </p>

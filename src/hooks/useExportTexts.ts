@@ -73,42 +73,8 @@ export function useExportTexts() {
         })),
       };
 
-      // Custom compact JSON formatter
-      const formatCompactJson = (data: ExportFormat): string => {
-        const lines: string[] = [];
-        lines.push('{');
-        lines.push(`  "format": "${data.format}",`);
-        lines.push(`  "exported_at": "${data.exported_at}",`);
-        lines.push(`  "user_email": "${data.user_email}",`);
-
-        // Tag glossary - compact
-        const glossaryItems = data.tag_glossary.map(t => `{"name": "${t.name}"}`).join(', ');
-        lines.push(`  "tag_glossary": [${glossaryItems}],`);
-
-        // Texts
-        lines.push('  "texts": [');
-        data.texts.forEach((text, index) => {
-          const isLast = index === data.texts.length - 1;
-          lines.push('    {');
-          lines.push(`      "content": ${JSON.stringify(text.content)},`);
-
-          // Tags on one line
-          const tagsStr = text.tags.map(tag =>
-            `{"name": "${tag.name}", "confidence": ${tag.confidence}, "source": "${tag.source}"}`
-          ).join(', ');
-          lines.push(`      "tags": [${tagsStr}],`);
-
-          lines.push(`      "created_at": "${text.created_at}"`);
-          lines.push(`    }${isLast ? '' : ','}`);
-        });
-        lines.push('  ]');
-        lines.push('}');
-
-        return lines.join('\n');
-      };
-
       // Create and download file
-      const jsonString = formatCompactJson(exportData);
+      const jsonString = JSON.stringify(exportData, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 

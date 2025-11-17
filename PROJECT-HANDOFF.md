@@ -218,7 +218,7 @@ const json = JSON.stringify(data, null, 2)
 
 1. **No Undo/Redo** for destructive actions
 2. **No Bulk Operations** (select multiple texts → action)
-3. **No Tag Categories** or hierarchies
+3. **No Tag Dependencies** (e.g., "hockey" → "sport" auto-propagation)
 4. **No Full-Text Search** (only tag-based)
 5. **No Keyboard Shortcuts** except in tag dropdown
 
@@ -332,7 +332,7 @@ tsc -b
 ### Short-Term (MVP)
 
 1. **Full-text search** (PostgreSQL FTS)
-2. **Tag categories/folders**
+2. **Tag dependencies** (child → parent auto-propagation)
 3. **Bulk operations** (multi-select)
 4. **Activity log** (audit trail)
 5. **Password reset flow**

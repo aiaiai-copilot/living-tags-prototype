@@ -1570,7 +1570,7 @@ Not implemented in prototype, but planned for MVP:
 - **Social login (Google, GitHub)**
 - **Team workspaces / shared collections**
 - **Full-text search** (PostgreSQL FTS)
-- **Tag categories** (grouping tags)
+- **Tag dependencies** (child → parent auto-propagation)
 - **Bulk tag operations** (add/remove tag from multiple texts at once)
 - **Activity history** (audit log of tag changes)
 - **API access**

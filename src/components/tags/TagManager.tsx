@@ -10,13 +10,10 @@ import { useTags } from "@/hooks/useTags";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useUpdateTag } from "@/hooks/useUpdateTag";
 import { useDeleteTag } from "@/hooks/useDeleteTag";
-import { useTagUsageCount } from "@/hooks/useTagUsageCount";
 import { useTagUsageCounts } from "@/hooks/useTagUsageCounts";
 import { AddTagDialog } from "@/components/tags/AddTagDialog";
-import { DeleteTagDialog } from "@/components/tags/DeleteTagDialog";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
-import { useState } from "react";
-import type { Tag } from "@/types";
+import { useState, useEffect } from "react";
 
 interface TagManagerProps {
   open: boolean;
@@ -29,8 +26,7 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
   const updateTag = useUpdateTag();
   const deleteTag = useDeleteTag();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
@@ -38,8 +34,13 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
   // Get usage counts for all tags (bulk query)
   const { data: usageCounts = {} } = useTagUsageCounts();
 
-  // Get usage count for the tag being deleted
-  const { data: usageCount = 0 } = useTagUsageCount(tagToDelete?.id ?? null);
+  // Auto-reset delete confirmation after 3 seconds
+  useEffect(() => {
+    if (confirmDeleteId) {
+      const timer = setTimeout(() => setConfirmDeleteId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmDeleteId]);
 
   // Handler to enter edit mode
   const handleStartEdit = (tagId: string, currentName: string) => {
@@ -92,16 +93,18 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
     }
   };
 
-  // Handler to open delete confirmation dialog
-  const handleDeleteClick = (tag: Tag) => {
-    setTagToDelete(tag);
-    setDeleteDialogOpen(true);
-  };
-
-  // Handler to confirm tag deletion
-  const handleConfirmDelete = async () => {
-    if (!tagToDelete) return;
-    await deleteTag.mutateAsync({ id: tagToDelete.id });
+  // Handler for two-click delete confirmation
+  const handleDeleteClick = async (tagId: string) => {
+    if (confirmDeleteId !== tagId) {
+      setConfirmDeleteId(tagId);
+      return;
+    }
+    try {
+      await deleteTag.mutateAsync({ id: tagId });
+    } catch (error) {
+      console.error("Failed to delete tag:", error);
+    }
+    setConfirmDeleteId(null);
   };
 
   // Handler for Sheet open/close - prevent closing when editing
@@ -212,9 +215,11 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteClick(tag)}
+                          variant={confirmDeleteId === tag.id ? "destructive" : "ghost"}
+                          className={`h-8 w-8 p-0 ${confirmDeleteId !== tag.id ? "text-destructive hover:text-destructive" : ""}`}
+                          onClick={() => handleDeleteClick(tag.id)}
+                          disabled={deleteTag.isPending}
+                          title={confirmDeleteId === tag.id ? "Click again to confirm" : "Delete tag"}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           <span className="sr-only">Delete {tag.name}</span>
@@ -239,14 +244,6 @@ export function TagManager({ open, onOpenChange }: TagManagerProps) {
         onSubmit={async (name: string) => {
           return await createTag.mutateAsync({ name });
         }}
-      />
-
-      <DeleteTagDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        tag={tagToDelete}
-        usageCount={usageCount}
-        onConfirm={handleConfirmDelete}
       />
     </Sheet>
   );

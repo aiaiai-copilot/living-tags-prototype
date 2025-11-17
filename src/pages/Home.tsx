@@ -186,13 +186,13 @@ export default function Home() {
           </div>
 
           {/* Actions Row */}
-          <div className="flex gap-4 items-center">
-            <Button onClick={() => setTagManagerOpen(true)} variant="outline" size="sm">
+          <div className="flex items-center">
+            <Button onClick={() => setTagManagerOpen(true)} variant="outline" size="sm" className="rounded-r-none border-r-0">
               <Tags className="h-4 w-4 mr-2" />
               Tags
             </Button>
             <div className="flex-1">
-              <SearchBar value={searchQuery} onChange={handleSearch} />
+              <SearchBar value={searchQuery} onChange={handleSearch} className="rounded-l-none" />
             </div>
           </div>
         </div>

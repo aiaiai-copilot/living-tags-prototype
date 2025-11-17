@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }
 
-export function SearchBar({ value, onChange }: SearchBarProps) {
+export function SearchBar({ value, onChange, className }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
 
   // Debounce logic: wait 300ms after user stops typing
@@ -32,7 +34,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
         placeholder="Search by tags..."
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="w-full"
+        className={cn("w-full", className)}
       />
     </div>
   );

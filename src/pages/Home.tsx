@@ -77,87 +77,94 @@ export default function Home() {
   }, [user, initializeTags])
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Living Tags</h1>
-            <p className="text-muted-foreground">
-              AI-powered text tagging for Russian jokes and anecdotes
-            </p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-10 bg-background border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          {/* Header */}
+          <div className="mb-4 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold mb-1">Living Tags</h1>
+              <p className="text-sm text-muted-foreground">
+                AI-powered text tagging for Russian jokes and anecdotes
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                {user?.email}
+              </span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                Sign Out
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {user?.email}
-            </span>
-            <Button variant="outline" onClick={handleSignOut}>
-              Sign Out
-            </Button>
+
+          {/* Actions Row */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex gap-2">
+              <Button onClick={() => setTagManagerOpen(true)} variant="outline" size="sm">
+                <Tags className="h-4 w-4 mr-2" />
+                Tags
+              </Button>
+              <Button
+                onClick={() => setImportDialogOpen(true)}
+                variant="outline"
+                size="sm"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+              <Button
+                onClick={() => exportTexts.mutate()}
+                variant="outline"
+                size="sm"
+                disabled={exportTexts.isPending}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {exportTexts.isPending ? 'Exporting...' : 'Export'}
+              </Button>
+              <Button onClick={() => setModalOpen(true)} size="sm">
+                + Add Text
+              </Button>
+            </div>
+            <div className="flex-1">
+              <SearchBar value={searchQuery} onChange={handleSearch} />
+            </div>
           </div>
         </div>
-
-        {/* Actions Row */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="flex gap-2">
-            <Button onClick={() => setTagManagerOpen(true)} variant="outline" className="sm:w-auto">
-              <Tags className="h-4 w-4 mr-2" />
-              Tags
-            </Button>
-            <Button
-              onClick={() => setImportDialogOpen(true)}
-              variant="outline"
-              className="sm:w-auto"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Import
-            </Button>
-            <Button
-              onClick={() => exportTexts.mutate()}
-              variant="outline"
-              className="sm:w-auto"
-              disabled={exportTexts.isPending}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {exportTexts.isPending ? 'Exporting...' : 'Export'}
-            </Button>
-            <Button onClick={() => setModalOpen(true)} className="sm:w-auto">
-              + Add Text
-            </Button>
-          </div>
-          <div className="flex-1">
-            <SearchBar value={searchQuery} onChange={handleSearch} />
-          </div>
-        </div>
-
-        {/* Content */}
-        <TextList texts={texts || []} loading={isLoading} />
-
-        {/* Add Text Modal */}
-        <AddTextModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          onSubmit={handleAddText}
-        />
-
-        {/* Onboarding Modal */}
-        <OnboardingModal
-          isOpen={showOnboarding}
-          onClose={handleCloseOnboarding}
-        />
-
-        {/* Tag Manager Panel */}
-        <TagManager
-          open={tagManagerOpen}
-          onOpenChange={setTagManagerOpen}
-        />
-
-        {/* Import Dialog */}
-        <ImportDialog
-          open={importDialogOpen}
-          onOpenChange={setImportDialogOpen}
-        />
       </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <TextList texts={texts || []} loading={isLoading} />
+        </div>
+      </div>
+
+      {/* Add Text Modal */}
+      <AddTextModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSubmit={handleAddText}
+      />
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={handleCloseOnboarding}
+      />
+
+      {/* Tag Manager Panel */}
+      <TagManager
+        open={tagManagerOpen}
+        onOpenChange={setTagManagerOpen}
+      />
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+      />
     </div>
   )
 }

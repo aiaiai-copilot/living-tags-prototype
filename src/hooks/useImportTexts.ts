@@ -6,6 +6,7 @@ import type { Tag } from '@/types';
 
 interface ImportedText {
   content: string;
+  created_at?: string;
   tags?: string[] | Array<{
     name: string;
     confidence?: number;
@@ -175,13 +176,23 @@ export function useImportTexts() {
               continue;
             }
 
-            // Insert text
+            // Insert text (preserve original created_at if available)
+            const textInsertData: {
+              user_id: string;
+              content: string;
+              created_at?: string;
+            } = {
+              user_id: user.id,
+              content: content,
+            };
+
+            if (textData.created_at) {
+              textInsertData.created_at = textData.created_at;
+            }
+
             const { data: newText, error: textError } = await supabase
               .from('texts')
-              .insert({
-                user_id: user.id,
-                content: content,
-              })
+              .insert(textInsertData)
               .select()
               .single();
 

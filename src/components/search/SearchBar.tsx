@@ -26,7 +26,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
   }, [value]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl">
       <Input
         type="text"
         placeholder="Search by tags..."

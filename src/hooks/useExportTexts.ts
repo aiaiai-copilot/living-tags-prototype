@@ -73,8 +73,14 @@ export function useExportTexts() {
         })),
       };
 
-      // Create and download file
-      const jsonString = JSON.stringify(exportData, null, 2);
+      // Create compact JSON with single-line arrays for tags
+      const jsonString = JSON.stringify(exportData, null, 2)
+        // Make tag_glossary items single-line
+        .replace(/\{\s*"name":\s*"([^"]+)"\s*\}/g, '{"name": "$1"}')
+        // Make tag objects single-line
+        .replace(/\{\s*"name":\s*"([^"]+)",\s*"confidence":\s*(\d+(?:\.\d+)?),\s*"source":\s*"([^"]+)"\s*\}/g,
+          '{"name": "$1", "confidence": $2, "source": "$3"}');
+
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 

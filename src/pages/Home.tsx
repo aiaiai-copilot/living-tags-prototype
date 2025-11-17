@@ -191,7 +191,7 @@ export default function Home() {
               <Tags className="h-4 w-4 mr-2" />
               Tags
             </Button>
-            <div className="w-64">
+            <div className="w-2/3">
               <SearchBar value={searchQuery} onChange={handleSearch} />
             </div>
           </div>

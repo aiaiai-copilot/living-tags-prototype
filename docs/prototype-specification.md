@@ -1759,3 +1759,5 @@ src/
 - **PoC Implementation:** Validated, 80%+ tagging accuracy
 - **Claude Tools:** `.claude/subagents/`, `.claude/skills/`
 - **PoC Migration:** `supabase/migrations/20251111000000_initial_schema.sql`
+- **Backend API Contract:** `docs/openapi-spec.yaml` (OpenAPI 3.0)
+- **Project Handoff:** `PROJECT-HANDOFF.md` (for next development phase)

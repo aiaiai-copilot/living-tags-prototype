@@ -373,9 +373,9 @@ tsc -b
 - `docs/poc-specification.md` - Original PoC scope
 - `docs/text-collection-saas-plan.md` - Product roadmap
 - `.claude/subagents/` - AI-assisted development workflows
+- `docs/openapi-spec.yaml` - OpenAPI 3.0 specification for backend API
 
 ### Missing
-- API documentation (no formal API yet)
 - User guide (prototype was tested by developers)
 - Architecture decision records (ADRs)
 - Performance benchmarks

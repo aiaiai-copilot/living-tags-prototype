@@ -13,7 +13,7 @@ import { useAddText } from '@/hooks/useAddText'
 import { useAuth } from '@/hooks/useAuth'
 import { useInitializeDefaultTags } from '@/hooks/useInitializeDefaultTags'
 import { useExportTexts } from '@/hooks/useExportTexts'
-import { Tags, Download, Upload, Menu } from 'lucide-react'
+import { Tags, Download, Upload, Menu, LogOut } from 'lucide-react'
 
 const ONBOARDING_SEEN_KEY = 'living-tags-onboarding-seen'
 
@@ -117,6 +117,10 @@ export default function Home() {
                 <Button onClick={() => setModalOpen(true)} size="sm">
                   + Add Text
                 </Button>
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Exit
+                </Button>
               </div>
               {/* Mobile hamburger menu */}
               <Popover open={menuOpen} onOpenChange={setMenuOpen}>
@@ -163,12 +167,21 @@ export default function Home() {
                     >
                       + Add Text
                     </Button>
+                    <Button
+                      onClick={() => {
+                        handleSignOut()
+                        setMenuOpen(false)
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Exit
+                    </Button>
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                Sign Out
-              </Button>
             </div>
           </div>
 

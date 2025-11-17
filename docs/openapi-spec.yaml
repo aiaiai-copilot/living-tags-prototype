@@ -1,0 +1,843 @@
+openapi: 3.0.3
+info:
+  title: Living Tags API
+  description: |
+    Backend API for Living Tags - a multi-user platform for managing text collections with AI-powered auto-tagging.
+
+    ## Key Features
+    - JWT-based authentication
+    - AI tagging with confidence scores (Claude API)
+    - Manual tag corrections with source tracking
+    - Import/Export with full fidelity
+    - Tag dependencies (future: child → parent propagation)
+  version: 1.0.0
+  contact:
+    name: Living Tags Team
+
+servers:
+  - url: https://api.livingtags.com/v1
+    description: Production server
+  - url: http://localhost:3001/v1
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: User registration and session management
+  - name: Texts
+    description: Text collection management
+  - name: Tags
+    description: Tag glossary operations
+  - name: Text-Tags
+    description: Tag assignments on texts
+  - name: Import/Export
+    description: Data portability operations
+
+paths:
+  /auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/signin:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user
+      operationId: signin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/signout:
+    post:
+      tags:
+        - Authentication
+      summary: Sign out current user
+      operationId: signout
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Successfully signed out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user info
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /texts:
+    get:
+      tags:
+        - Texts
+      summary: List user's texts with tags
+      operationId: listTexts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          description: Pagination cursor (text ID to start after)
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Number of texts to return (max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: search
+          in: query
+          description: Space-separated tag names (AND logic)
+          schema:
+            type: string
+          example: "sport hockey"
+      responses:
+        '200':
+          description: List of texts with their tags
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Texts
+      summary: Create new text
+      operationId: createText
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTextRequest'
+      responses:
+        '201':
+          description: Text created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextWithTags'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /texts/{textId}:
+    delete:
+      tags:
+        - Texts
+      summary: Delete text
+      operationId: deleteText
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/textId'
+      responses:
+        '204':
+          description: Text deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /texts/{textId}/retag:
+    post:
+      tags:
+        - Texts
+      summary: Re-run AI tagging on text
+      description: |
+        Deletes existing AI tags (preserves manual tags) and runs Claude API
+        with current tag glossary. Returns updated text with new AI suggestions.
+      operationId: retagText
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/textId'
+      responses:
+        '200':
+          description: Text re-tagged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextWithTags'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: AI service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tags:
+    get:
+      tags:
+        - Tags
+      summary: List user's tag glossary
+      operationId: listTags
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tag glossary with usage counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Tags
+      summary: Create new tag in glossary
+      operationId: createTag
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+      responses:
+        '201':
+          description: Tag created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Tag name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tags/{tagId}:
+    patch:
+      tags:
+        - Tags
+      summary: Rename tag
+      operationId: updateTag
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/tagId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+      responses:
+        '200':
+          description: Tag updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Tag name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Tags
+      summary: Delete tag from glossary
+      description: Removes tag and all its assignments (CASCADE delete)
+      operationId: deleteTag
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/tagId'
+      responses:
+        '204':
+          description: Tag deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /texts/{textId}/tags/{tagId}:
+    put:
+      tags:
+        - Text-Tags
+      summary: Add or update tag on text
+      description: |
+        Adds manual tag to text. If tag already exists (AI or manual),
+        converts to manual with confidence 1.0 (UPSERT behavior).
+      operationId: addTagToText
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/textId'
+        - $ref: '#/components/parameters/tagId'
+      responses:
+        '200':
+          description: Tag added/updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextTag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Text-Tags
+      summary: Remove tag from text
+      operationId: removeTagFromText
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/textId'
+        - $ref: '#/components/parameters/tagId'
+      responses:
+        '204':
+          description: Tag removed successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /import:
+    post:
+      tags:
+        - Import/Export
+      summary: Import texts from JSON file
+      description: |
+        Imports texts with flexible tag format support:
+        - String arrays → manual tags (confidence 1.0)
+        - Objects without source → AI tags
+        - Objects with source → preserves distinction
+
+        Auto-creates missing tags in glossary. Preserves original timestamps.
+      operationId: importTexts
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRequest'
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /export:
+    get:
+      tags:
+        - Import/Export
+      summary: Export all texts with tags
+      description: |
+        Exports complete data in living-tags-v1 format with:
+        - Tag glossary
+        - All texts with content
+        - All tag assignments with confidence and source
+        - Original timestamps preserved
+      operationId: exportTexts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Export data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    textId:
+      name: textId
+      in: path
+      required: true
+      description: Text unique identifier
+      schema:
+        type: string
+        format: uuid
+
+    tagId:
+      name: tagId
+      in: path
+      required: true
+      description: Tag unique identifier
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid email format"
+        details:
+          type: object
+          additionalProperties: true
+
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 8
+          example: "securePassword123"
+
+    SigninRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - token
+        - expires_at
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT access token
+        expires_at:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+
+    Tag:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Программисты"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TagWithUsage:
+      allOf:
+        - $ref: '#/components/schemas/Tag'
+        - type: object
+          required:
+            - usage_count
+          properties:
+            usage_count:
+              type: integer
+              minimum: 0
+              example: 23
+
+    TextTag:
+      type: object
+      required:
+        - tag_id
+        - tag_name
+        - confidence
+        - source
+      properties:
+        tag_id:
+          type: string
+          format: uuid
+        tag_name:
+          type: string
+          example: "Штирлиц"
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.95
+        source:
+          type: string
+          enum:
+            - ai
+            - manual
+            - derived
+          example: "ai"
+
+    TextWithTags:
+      type: object
+      required:
+        - id
+        - content
+        - tags
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+          example: "Штирлиц шёл по Берлину..."
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TextTag'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTextRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        auto_tag:
+          type: boolean
+          default: true
+          description: Run AI tagging after creation
+
+    CreateTagRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+
+    UpdateTagRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+
+    TextListResponse:
+      type: object
+      required:
+        - texts
+        - has_more
+      properties:
+        texts:
+          type: array
+          items:
+            $ref: '#/components/schemas/TextWithTags'
+        has_more:
+          type: boolean
+        next_cursor:
+          type: string
+          format: uuid
+          description: Cursor for next page (null if no more)
+
+    TagListResponse:
+      type: object
+      required:
+        - tags
+      properties:
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagWithUsage'
+
+    ImportRequest:
+      type: object
+      required:
+        - format
+        - texts
+      properties:
+        format:
+          type: string
+          enum:
+            - living-tags-v1
+        texts:
+          type: array
+          items:
+            type: object
+            required:
+              - content
+            properties:
+              content:
+                type: string
+              tags:
+                oneOf:
+                  - type: array
+                    items:
+                      type: string
+                    description: String array (treated as manual tags)
+                  - type: array
+                    items:
+                      type: object
+                      required:
+                        - name
+                      properties:
+                        name:
+                          type: string
+                        confidence:
+                          type: number
+                        source:
+                          type: string
+                          enum:
+                            - ai
+                            - manual
+              created_at:
+                type: string
+                format: date-time
+                description: Original timestamp (preserved if provided)
+
+    ImportResponse:
+      type: object
+      required:
+        - imported_count
+        - skipped_count
+        - tags_created
+      properties:
+        imported_count:
+          type: integer
+          example: 98
+        skipped_count:
+          type: integer
+          example: 2
+        tags_created:
+          type: array
+          items:
+            type: string
+          example: ["НовыйТег", "ДругойТег"]
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                type: string
+
+    ExportResponse:
+      type: object
+      required:
+        - format
+        - exported_at
+        - user_email
+        - tag_glossary
+        - texts
+      properties:
+        format:
+          type: string
+          enum:
+            - living-tags-v1
+        exported_at:
+          type: string
+          format: date-time
+        user_email:
+          type: string
+          format: email
+        tag_glossary:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+            properties:
+              name:
+                type: string
+        texts:
+          type: array
+          items:
+            type: object
+            required:
+              - content
+              - tags
+              - created_at
+            properties:
+              content:
+                type: string
+              tags:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - name
+                    - confidence
+                    - source
+                  properties:
+                    name:
+                      type: string
+                    confidence:
+                      type: number
+                    source:
+                      type: string
+                      enum:
+                        - ai
+                        - manual
+                        - derived
+              created_at:
+                type: string
+                format: date-time

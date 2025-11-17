@@ -1,13 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import type { Tag } from '@/types';
+import { toast } from 'sonner';
+import type { Tag, TextWithTags } from '@/types';
 
 /**
  * Input type for deleting a tag
  */
 export interface DeleteTagInput {
   id: string; // Tag ID to delete
+}
+
+interface DeleteTagContext {
+  previousTags: Tag[] | undefined;
+  previousTextsQueries: Array<[any, any]>;
 }
 
 /**
@@ -17,7 +23,7 @@ export interface DeleteTagInput {
  * 1. Validates user is authenticated
  * 2. Deletes tag from the database (user_id verification via RLS)
  * 3. Database CASCADE automatically deletes related text_tags rows
- * 4. Uses optimistic updates for instant UI feedback
+ * 4. Uses optimistic updates for instant UI feedback (both tags and texts)
  * 5. Invalidates both tags and texts queries since relationships changed
  *
  * Note: When a tag is deleted, all text_tags relationships are automatically
@@ -37,7 +43,7 @@ export function useDeleteTag() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  return useMutation<void, Error, DeleteTagInput, { previous: Tag[] | undefined }>({
+  return useMutation<void, Error, DeleteTagInput, DeleteTagContext>({
     mutationFn: async (input: DeleteTagInput) => {
       // Validate user is authenticated
       if (!user) {
@@ -59,37 +65,60 @@ export function useDeleteTag() {
     },
     // Optimistic update: immediately remove tag from UI before server responds
     onMutate: async (variables) => {
-      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['tags', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['texts', user?.id], exact: false });
 
-      // Snapshot the previous value
-      const previous = queryClient.getQueryData<Tag[]>(['tags', user?.id]);
+      // Snapshot the previous tags
+      const previousTags = queryClient.getQueryData<Tag[]>(['tags', user?.id]);
 
-      // Optimistically update by removing the tag
+      // Snapshot ALL texts queries
+      const previousTextsQueries = queryClient.getQueriesData({
+        queryKey: ['texts', user?.id],
+        exact: false
+      });
+
+      // Optimistically update tags list
       queryClient.setQueryData<Tag[]>(['tags', user?.id], (old) => {
         if (!old) return old;
         return old.filter((tag) => tag.id !== variables.id);
       });
 
-      // Return context object with the snapshotted value
-      return { previous };
+      // Optimistically remove tag from all texts
+      queryClient.setQueriesData(
+        { queryKey: ['texts', user?.id], exact: false },
+        (old: TextWithTags[] | undefined) => {
+          if (!old) return old;
+          return old.map((text) => ({
+            ...text,
+            tags: text.tags.filter((tag) => tag.id !== variables.id)
+          }));
+        }
+      );
+
+      // Return context object for rollback
+      return { previousTags, previousTextsQueries };
     },
-    // If the mutation fails, use the context returned from onMutate to roll back
-    onError: (_err, _variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['tags', user?.id], context.previous);
+    // If the mutation fails, roll back
+    onError: (err, _variables, context) => {
+      if (context?.previousTags) {
+        queryClient.setQueryData(['tags', user?.id], context.previousTags);
       }
+      if (context?.previousTextsQueries) {
+        context.previousTextsQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.error('Failed to delete tag', { description: err.message });
     },
-    // On success, invalidate texts query since tag associations changed
     onSuccess: () => {
-      // Invalidate texts query to reflect removed tag associations
-      queryClient.invalidateQueries({ queryKey: ['texts'] });
-      // Invalidate tag usage counts since tag was deleted (CASCADE deletes text_tags)
-      queryClient.invalidateQueries({ queryKey: ['tag-usage-counts'] });
+      toast.success('Tag deleted');
     },
-    // Always refetch tags after error or success to ensure data is in sync
+    // Always refetch after error or success to ensure data is in sync
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tags', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['texts', user?.id], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['tagUsageCounts', user?.id] });
     },
   });
 }

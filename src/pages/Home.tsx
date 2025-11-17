@@ -100,12 +100,15 @@ export default function Home() {
           </div>
 
           {/* Actions Row */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <Button onClick={() => setTagManagerOpen(true)} variant="outline" size="sm">
+              <Tags className="h-4 w-4 mr-2" />
+              Tags
+            </Button>
+            <div className="flex-1 w-full sm:w-auto">
+              <SearchBar value={searchQuery} onChange={handleSearch} />
+            </div>
             <div className="flex gap-2">
-              <Button onClick={() => setTagManagerOpen(true)} variant="outline" size="sm">
-                <Tags className="h-4 w-4 mr-2" />
-                Tags
-              </Button>
               <Button
                 onClick={() => setImportDialogOpen(true)}
                 variant="outline"
@@ -126,9 +129,6 @@ export default function Home() {
               <Button onClick={() => setModalOpen(true)} size="sm">
                 + Add Text
               </Button>
-            </div>
-            <div className="flex-1">
-              <SearchBar value={searchQuery} onChange={handleSearch} />
             </div>
           </div>
         </div>

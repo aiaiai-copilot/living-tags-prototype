@@ -87,28 +87,16 @@ export function TextCard({ text }: TextCardProps) {
           <p className="text-base leading-relaxed whitespace-pre-wrap flex-1">
             {text.content}
           </p>
-          <div className="flex gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRetag}
-              disabled={autoTag.isPending}
-              title="Re-tag with AI"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${autoTag.isPending ? "animate-spin" : ""}`}
-              />
-            </Button>
-            <Button
-              variant={confirmDelete ? "destructive" : "ghost"}
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleteText.isPending}
-              title={confirmDelete ? "Click again to confirm" : "Delete text"}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            variant={confirmDelete ? "destructive" : "ghost"}
+            size="sm"
+            onClick={handleDelete}
+            disabled={deleteText.isPending}
+            title={confirmDelete ? "Click again to confirm" : "Delete text"}
+            className="shrink-0"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           {sortedTags.map((tag) => (
@@ -120,6 +108,18 @@ export function TextCard({ text }: TextCardProps) {
               onRemove={() => handleTagRemoved(tag.id)}
             />
           ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRetag}
+            disabled={autoTag.isPending}
+            title="Re-tag with AI"
+            className="h-6 px-2"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${autoTag.isPending ? "animate-spin" : ""}`}
+            />
+          </Button>
           <InlineTagEditor
             currentTagIds={text.tags.map(t => t.id)}
             availableTags={availableTags}

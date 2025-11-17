@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SearchBar } from '@/components/search/SearchBar'
 import { TextList } from '@/components/texts/TextList'
 import { AddTextModal } from '@/components/texts/AddTextModal'
@@ -12,7 +13,7 @@ import { useAddText } from '@/hooks/useAddText'
 import { useAuth } from '@/hooks/useAuth'
 import { useInitializeDefaultTags } from '@/hooks/useInitializeDefaultTags'
 import { useExportTexts } from '@/hooks/useExportTexts'
-import { Tags, Download, Upload } from 'lucide-react'
+import { Tags, Download, Upload, Menu } from 'lucide-react'
 
 const ONBOARDING_SEEN_KEY = 'living-tags-onboarding-seen'
 
@@ -22,6 +23,7 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [tagManagerOpen, setTagManagerOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
 
   const { data: texts, isLoading } = useTexts(searchQuery)
@@ -89,10 +91,81 @@ export default function Home() {
                 AI-powered text tagging for Russian jokes and anecdotes
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
                 {user?.email}
               </span>
+              {/* Desktop buttons */}
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  onClick={() => setImportDialogOpen(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+                <Button
+                  onClick={() => exportTexts.mutate()}
+                  variant="outline"
+                  size="sm"
+                  disabled={exportTexts.isPending}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {exportTexts.isPending ? 'Exporting...' : 'Export'}
+                </Button>
+                <Button onClick={() => setModalOpen(true)} size="sm">
+                  + Add Text
+                </Button>
+              </div>
+              {/* Mobile hamburger menu */}
+              <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="md:hidden">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-48 p-2">
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      onClick={() => {
+                        setImportDialogOpen(true)
+                        setMenuOpen(false)
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        exportTexts.mutate()
+                        setMenuOpen(false)
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start"
+                      disabled={exportTexts.isPending}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      {exportTexts.isPending ? 'Exporting...' : 'Export'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setModalOpen(true)
+                        setMenuOpen(false)
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      + Add Text
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>
@@ -100,35 +173,13 @@ export default function Home() {
           </div>
 
           {/* Actions Row */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex gap-4 items-center">
             <Button onClick={() => setTagManagerOpen(true)} variant="outline" size="sm">
               <Tags className="h-4 w-4 mr-2" />
               Tags
             </Button>
-            <div className="flex-1 w-full sm:w-auto">
+            <div className="flex-1">
               <SearchBar value={searchQuery} onChange={handleSearch} />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setImportDialogOpen(true)}
-                variant="outline"
-                size="sm"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Button
-                onClick={() => exportTexts.mutate()}
-                variant="outline"
-                size="sm"
-                disabled={exportTexts.isPending}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {exportTexts.isPending ? 'Exporting...' : 'Export'}
-              </Button>
-              <Button onClick={() => setModalOpen(true)} size="sm">
-                + Add Text
-              </Button>
             </div>
           </div>
         </div>

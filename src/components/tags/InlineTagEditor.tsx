@@ -77,9 +77,11 @@ export function InlineTagEditor({
         if (highlightedIndex >= 0 && highlightedIndex < filteredTags.length) {
           // Add highlighted tag
           const tag = filteredTags[highlightedIndex];
-          onTagAdded(tag.id);
-          setSearchQuery("");
-          setHighlightedIndex(-1);
+          if (tag) {
+            onTagAdded(tag.id);
+            setSearchQuery("");
+            setHighlightedIndex(-1);
+          }
         }
         break;
     }

@@ -139,6 +139,12 @@ Return the JSON array now:`;
       }
     }
 
+    // Normalize smart quotes that can break JSON parsing
+    // Replace curly/smart quotes with straight quotes inside strings
+    jsonText = jsonText
+      .replace(/[\u201C\u201D]/g, '\\"') // Replace " and " with escaped quote
+      .replace(/[\u2018\u2019]/g, "'"); // Replace ' and ' with straight apostrophe
+
     let parsedResponse: unknown;
     try {
       parsedResponse = JSON.parse(jsonText);

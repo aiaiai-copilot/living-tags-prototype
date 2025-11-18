@@ -51,6 +51,7 @@ This document specifies the Prototype (Stage 2) of the Living Tags platform - a 
 - **File Handling:** Browser File API (no additional dependencies)
 - **JSON Validation:** zod (already included)
 - **Toast Notifications:** sonner ^1.x.x
+- **UI Components:** Popover (shadcn/ui) for hamburger menu
 
 ---
 
@@ -386,7 +387,7 @@ interface DeleteTagInput {
 // Behavior:
 // - CASCADE deletes all text_tags rows (handled by DB)
 // - Remove tag from UI immediately (optimistic update)
-// - Show confirmation dialog before deletion
+// - Two-click confirmation pattern (same as text deletion)
 ```
 
 #### Synchronization Logic
@@ -405,10 +406,11 @@ User renames "Программисты" → "Разработчики"
 ```
 User deletes "Каламбур" tag
 
-1. Show confirmation: "This will remove tag from N texts"
-2. If confirmed, DELETE tag (CASCADE removes text_tags)
-3. UI removes tag from all TextCard components
-4. No re-tagging needed
+1. User clicks delete button → changes to "Confirm?"
+2. User clicks again within 3 seconds → DELETE tag
+3. CASCADE removes all text_tags automatically
+4. UI removes tag from all TextCard components (optimistic)
+5. No re-tagging needed
 ```
 
 **Scenario 3: New Tag Added with Auto-Tag**
@@ -602,16 +604,16 @@ This ensures backward compatibility while supporting full round-trip fidelity fo
   "exported_at": "2025-11-13T17:45:00Z",
   "user_email": "user@example.com",
   "tag_glossary": [
-    { "name": "Вовочка" },
-    { "name": "Штирлиц" }
+    {"name": "Вовочка"},
+    {"name": "Штирлиц"}
   ],
   "texts": [
     {
       "content": "Штирлиц шёл по Берлину...",
       "tags": [
-        { "name": "Штирлиц", "confidence": 0.95, "source": "ai" },
-        { "name": "Советские", "confidence": 0.87, "source": "ai" },
-        { "name": "Абсурд", "confidence": 1.0, "source": "manual" }
+        {"name": "Штирлиц", "confidence": 0.95, "source": "ai"},
+        {"name": "Советские", "confidence": 0.87, "source": "ai"},
+        {"name": "Абсурд", "confidence": 1, "source": "manual"}
       ],
       "created_at": "2025-11-12T10:30:00Z"
     }
@@ -619,15 +621,29 @@ This ensures backward compatibility while supporting full round-trip fidelity fo
 }
 ```
 
+**Compact Format Notes:**
+- Tag glossary objects are single-line: `{"name": "..."}`
+- Tag assignment objects are single-line: `{"name": "...", "confidence": ..., "source": "..."}`
+- Makes file comparison (diff) easier and more readable
+- Implemented via regex post-processing after JSON.stringify
+
 #### Export Flow
 
 ```
 1. User clicks "Export" button
 2. Generate JSON from current data
-3. Create Blob with JSON string
-4. Trigger download: "living-tags-export-YYYY-MM-DD.json"
-5. Show success notification
+3. Apply compact formatting for tag objects
+4. Create Blob with JSON string
+5. Trigger download: "living-tags-export-YYYY-MM-DD.json"
+6. Show success notification
 ```
+
+#### Import Timestamp Preservation
+
+When importing texts, original creation timestamps are preserved:
+- If `created_at` field exists in import file, use it
+- Maintains chronological order after round-trip export/import
+- Important for preserving text history and order
 
 #### UI Components
 
@@ -676,31 +692,67 @@ Export Modal (optional):
 
 #### Main Application Layout
 
+**Desktop Layout (md+):**
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Living Tags                       [user@email.com ▾] [Sign Out]  │
-├─────────────────┬────────────────────────────────────────────────┤
-│                 │                                                 │
-│  TAG GLOSSARY   │  [Search tags...]                 [+ Add Text] │
-│  (15)           │  [Import] [Export]                              │
-│                 │                                                 │
-│  Вовочка (23)   │  ┌──────────────────────────────────────────┐  │
-│  Штирлиц (12)   │  │ Штирлиц шёл по Берлину...                │  │
-│  Программисты   │  │ [Штирлиц 95% ✕] [Советские 87% ✕]       │  │
-│  ...            │  │ [Абсурд ✓] [+ Add tag ▾]                 │  │
-│                 │  └──────────────────────────────────────────┘  │
-│  [+ Add Tag]    │                                                 │
-│  [Import]       │  ┌──────────────────────────────────────────┐  │
-│  [Export]       │  │ Программист звонит...                    │  │
-│                 │  │ [Программисты 92% ✕]                     │  │
-│                 │  │ [Каламбур 78% ✕] [+ Add tag ▾]           │  │
-└─────────────────┴────────────────────────────────────────────────┘
+│ Living Tags               [user@email.com] [Import] [Export]    │
+│                           [+ Add Text] [Exit]                   │
+├──────────────────────────────────────────────────────────────────┤
+│ [Tags ▾] [Search tags...________________]        (sticky header) │
+├──────────────────────────────────────────────────────────────────┤
+│                          (scrollable content)                    │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ [🗑️]                                                      │   │
+│  │ Штирлиц шёл по Берлину...                                │   │
+│  │ [Штирлиц 95% ✕] [Советские 87% ✕]                       │   │
+│  │ [Абсурд ✓] [+ Add tag ▾] [🔄 Re-tag]                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ [🗑️]                                                      │   │
+│  │ Программист звонит...                                    │   │
+│  │ [Программисты 92% ✕]                                     │   │
+│  │ [Каламбур 78% ✕] [+ Add tag ▾] [🔄 Re-tag]              │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Mobile Layout (<md):**
+```
+┌──────────────────────────────────┐
+│ Living Tags    [user@..] [☰]    │  ← Hamburger menu
+├──────────────────────────────────┤
+│ [Tags ▾] [Search tags...]       │  ← Sticky
+├──────────────────────────────────┤
+│        (scrollable)              │
+│  ┌────────────────────────────┐  │
+│  │ Text card...               │  │
+│  └────────────────────────────┘  │
+└──────────────────────────────────┘
+
+Hamburger menu contains:
+  [Import]
+  [Export]
+  [+ Add Text]
+  [Exit]
+```
+
+**Layout Features:**
+- Header with action buttons stays at top (sticky)
+- Tags button and search bar in fixed-width container (2/3 of main area)
+- Fixed gap between Tags button and search bar (doesn't change with screen size)
+- Search bar fills remaining space within container
+- Only text list scrolls, not the header/actions row
+- Import/Export/Add Text/Exit buttons collapse into hamburger menu on mobile
 
 Legend:
   [Tag 95% ✕]  → AI-generated tag (light gray, shows confidence %)
   [Tag ✓]      → Manual tag (solid color, checkmark icon)
-  [✕]          → Remove button (appears on hover)
+  [✕]          → Remove tag button (appears on hover)
   [+ Add tag ▾]→ Opens inline dropdown to add tags
+  [🔄 Re-tag]  → Re-run AI tagging with current glossary
+  [🗑️]          → Delete text (two-click confirmation)
+  [☰]          → Hamburger menu (mobile only)
 ```
 
 #### Search Functionality
@@ -859,6 +911,8 @@ AI auto-tagging is not always accurate. Users need the ability to correct mistak
 **Inline editing** directly on text cards:
 - Users can add tags from their tag glossary without opening a modal
 - Users can remove existing tags (both AI and manual)
+- Users can re-tag texts with updated glossary
+- Users can delete texts entirely
 - Clear visual distinction between AI-generated and manually-added tags
 - All changes reflected immediately with optimistic updates
 
@@ -867,11 +921,12 @@ AI auto-tagging is not always accurate. Users need the ability to correct mistak
 **Text Card with Inline Editing:**
 ```
 ┌─────────────────────────────────────────────────┐
+│ [🗑️]                                    (top-right)
 │ Штирлиц шёл по Берлину. Его выдавала            │
 │ волочащаяся за ним парашютная стропа.           │
 │                                                  │
 │ [Штирлиц 95% ✕] [Советские 87% ✕]              │
-│ [Абсурд ✓] [+ Add tag ▾]                       │
+│ [Абсурд ✓] [+ Add tag ▾] [🔄 Re-tag]           │
 │             └─────────────────────┐             │
 │                 Dropdown:         │             │
 │                 [Search...]       │             │
@@ -882,11 +937,51 @@ AI auto-tagging is not always accurate. Users need the ability to correct mistak
 └─────────────────────────────────────────────────┘
 
 Legend:
+  [🗑️]             → Delete text button (top-right corner)
   [Штирлиц 95% ✕]  → AI tag with confidence (gray background, lighter text)
   [Абсурд ✓]        → Manual tag, 100% confidence (solid color, checkmark icon)
   [✕]               → Remove tag button (appears on hover)
   [+ Add tag ▾]     → Opens searchable dropdown
+  [🔄 Re-tag]       → Re-run AI tagging with current glossary
 ```
+
+#### Text Deletion
+
+**Two-Click Confirmation Pattern:**
+Users can delete texts with a safe, inline confirmation:
+
+```
+1. User clicks delete button (🗑️)
+2. Button changes to "Confirm?" (destructive color)
+3. 3-second timer starts
+4. User clicks again to confirm → text deleted
+5. If no second click within 3 seconds → button reverts
+
+Benefits:
+- No modal interruption
+- Faster than dialog-based confirmation
+- Still prevents accidental deletion
+- Clear visual feedback
+```
+
+**Database:**
+```sql
+DELETE FROM texts WHERE id = $textId AND user_id = auth.uid();
+-- CASCADE deletes all text_tags automatically
+```
+
+#### Re-tagging Individual Texts
+
+Users can re-run AI tagging on individual texts when:
+- They've added new tags to their glossary
+- They want to refresh AI suggestions
+- They've removed incorrect AI tags and want new suggestions
+
+**Behavior:**
+- Deletes existing AI tags only (preserves manual tags)
+- Calls Claude API with current tag glossary
+- Inserts new AI suggestions
+- Shows loading state during processing
 
 #### Visual Distinction
 
@@ -1475,7 +1570,7 @@ Not implemented in prototype, but planned for MVP:
 - **Social login (Google, GitHub)**
 - **Team workspaces / shared collections**
 - **Full-text search** (PostgreSQL FTS)
-- **Tag categories** (grouping tags)
+- **Tag dependencies** (child → parent auto-propagation)
 - **Bulk tag operations** (add/remove tag from multiple texts at once)
 - **Activity history** (audit log of tag changes)
 - **API access**
@@ -1610,8 +1705,10 @@ src/
 │   ├── useTags.ts                 # UPDATED (add CRUD operations)
 │   ├── useAutoTag.ts              # UPDATED (add batch mode, preserve manual)
 │   ├── useManualTag.ts            # NEW (add/remove manual tags)
-│   ├── useImport.ts               # NEW
-│   └── useExport.ts               # NEW
+│   ├── useDeleteText.ts           # NEW (two-click confirmation, optimistic)
+│   ├── useDeleteTag.ts            # NEW (two-click confirmation, optimistic)
+│   ├── useImportTexts.ts          # NEW (flexible format, timestamp preservation)
+│   └── useExportTexts.ts          # NEW (compact JSON format)
 ├── pages/
 │   ├── Landing.tsx                # NEW
 │   └── App.tsx                    # UPDATED (protected route)
@@ -1623,13 +1720,25 @@ src/
 
 ## Document Status
 
-**Version:** 1.3
+**Version:** 1.4
 **Created:** 2025-11-13
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-11-17
 **Author:** Based on PoC validation and Stage 2 plan
-**Status:** Phase 3 complete, Phase 4 ready
+**Status:** Phase 4 complete
 
 **Change Log:**
+- 2025-11-17 v1.4: Phase 4 Import/Export complete + Enhanced UI
+  - Import/Export functionality with full source preservation
+  - Text deletion with two-click confirmation pattern
+  - Tag deletion with two-click confirmation pattern (consistency)
+  - Re-tag button moved to text tag area
+  - Sticky header with responsive hamburger menu
+  - Import/Export/Add Text/Exit buttons in header
+  - Exit button (renamed from Sign Out) in hamburger menu
+  - Compact JSON export format (tag objects on single lines)
+  - Import preserves original created_at timestamps
+  - Fixed Tags button + search bar layout with stable spacing
+  - Smart quote normalization for Claude API JSON parsing
 - 2025-11-15 v1.3: Added Enhanced UX Features section (Phase 3+)
   - Multi-tag search with AND logic
   - Arrow key navigation in tag dropdown
@@ -1650,3 +1759,5 @@ src/
 - **PoC Implementation:** Validated, 80%+ tagging accuracy
 - **Claude Tools:** `.claude/subagents/`, `.claude/skills/`
 - **PoC Migration:** `supabase/migrations/20251111000000_initial_schema.sql`
+- **Backend API Contract:** `docs/openapi-spec.yaml` (OpenAPI 3.0)
+- **Project Handoff:** `PROJECT-HANDOFF.md` (for next development phase)

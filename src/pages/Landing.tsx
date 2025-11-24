@@ -27,7 +27,7 @@ export function Landing() {
         <div className="flex flex-col items-center justify-center space-y-8">
           {/* Hero Section */}
           <div className="text-center space-y-4 max-w-3xl">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent pb-4">
               Living Tags
             </h1>
             <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">

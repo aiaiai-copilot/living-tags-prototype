@@ -1,12 +1,12 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { Landing } from './pages/Landing'
-import Home from './pages/Home'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import Home from './pages/Home'
+import { Landing } from './pages/Landing'
 
 function App() {
   return (
-    <Router>
+    <Router basename="/portfolio/living-tags/living-tags-prototype">
       <Toaster position="top-right" richColors />
       <Routes>
         {/* Public Routes */}
